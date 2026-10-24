@@ -142,7 +142,6 @@ public:
 	static void drawBitmap(coord_t x, coord_t y, uint8_t *bitmap, coord_t w, coord_t h, color_t color);
 	static void drawBitmap(coord_t x, coord_t y, uint8_t *bitmap, coord_t w, coord_t h, color_t color, color_t bg);
 	static void drawXBitmap(coord_t x, coord_t y, const uint8_t *bitmap, coord_t w, coord_t h, color_t color);
-	static void drawChar(coord_t x, coord_t y, unsigned char c, color_t color, color_t bg, uint8_t size);
 	static void drawCharGFX(coord_t x, coord_t y, unsigned char c, color_t color, color_t bg, uint8_t size);
 	static inline void setCursor(coord_t x, coord_t y);
 	static inline void setBound(coord_t x, coord_t y);
@@ -150,7 +149,6 @@ public:
 	static inline void setTextColor(color_t c, color_t bg);
 	static inline void setTextSize(uint8_t s);
 	static inline void setTextWrap(boolean w);
-	static inline void cp437(boolean x=true);
 	static inline void setFont(const GFXfont *f = NULL);
 
 	static inline coord_t width() __attribute__ ((always_inline))				{ return _width; }
@@ -173,7 +171,6 @@ protected:
 	static uint8_t	textsize;
 	static uint8_t	rotation;
 	static boolean	wrap;				// If set, 'wrap' text at right edge of display
-	static boolean	_cp437;				// If set, use correct CP437 charset (default is off)
 };
 
 
@@ -202,9 +199,6 @@ private:
 	boolean		currstate, laststate;
 };
 
-// -----------------------------------------------
-extern const unsigned char glcdfont[] PROGMEM;
-
 template<class HW>
 int16_t		PDQ_GFX<HW>::WIDTH;			// This is the 'raw' display w/h - never changes
 template<class HW>
@@ -232,8 +226,6 @@ uint8_t		PDQ_GFX<HW>::rotation;
 template<class HW>
 boolean		PDQ_GFX<HW>::wrap;			// If set, 'wrap' text at right edge of display
 template<class HW>
-boolean		PDQ_GFX<HW>::_cp437;		// If set, use correct CP437 charset (default is off)
-template<class HW>
 GFXfont		*PDQ_GFX<HW>::gfxFont;
 
 template<class HW>
@@ -252,7 +244,6 @@ PDQ_GFX<HW>::PDQ_GFX(coord_t w, coord_t h)
 	textcolor	= 0xffff;
 	textbgcolor	= 0xffff;
 	wrap		= true;
-	_cp437		= false;
 	gfxFont		= NULL;
 }
 
@@ -725,116 +716,40 @@ void PDQ_GFX<HW>::drawXBitmap(coord_t x, coord_t y, const uint8_t *bitmap, coord
 template<class HW>
 size_t PDQ_GFX<HW>::write(uint8_t c)
 {
-	// 'Classic' built-in font
 	if (!gfxFont)
+		return 1;
+
+	if(c == '\n')
 	{
-		if (c == '\n')
-		{
-			cursor_x = 0;
-			cursor_y += (coord_t)textsize*8;
-		}
-		else if (c != '\r')
-		{
-			HW::drawChar(cursor_x, cursor_y, c, textcolor, textbgcolor, textsize);
-			cursor_x += textsize*6;
-			if (wrap && (cursor_x > (_width - textsize*6)))
-			{
-				cursor_x = 0;
-				cursor_y += textsize*8;
-			}
-		}
+		cursor_x	= bound_x1;
+		cursor_y += (coord_t)textsize * (uint8_t)pgm_read_byte(&gfxFont->yAdvance);
 	}
-	else
+	else if (c != '\r')
 	{
-		if(c == '\n')
+		uint8_t first = pgm_read_byte(&gfxFont->first);
+		if ((c >= first) && (c <= (uint8_t)pgm_read_byte(&gfxFont->last)))
 		{
-			cursor_x	= bound_x1;
-			cursor_y += (coord_t)textsize * (uint8_t)pgm_read_byte(&gfxFont->yAdvance);
-		}
-		else if (c != '\r')
-		{
-			uint8_t first = pgm_read_byte(&gfxFont->first);
-			if ((c >= first) && (c <= (uint8_t)pgm_read_byte(&gfxFont->last)))
+			uint8_t	c2		= c - pgm_read_byte(&gfxFont->first);
+			GFXglyph *glyph = &(((GFXglyph *)pgm_read_pointer(&gfxFont->glyph))[c2]);
+			uint8_t	w		= pgm_read_byte(&glyph->width);
+			uint8_t	h		= pgm_read_byte(&glyph->height);
+			// Is there an associated bitmap?
+			if ((w > 0) && (h > 0))
 			{
-				uint8_t	c2		= c - pgm_read_byte(&gfxFont->first);
-				GFXglyph *glyph = &(((GFXglyph *)pgm_read_pointer(&gfxFont->glyph))[c2]);
-				uint8_t	w		= pgm_read_byte(&glyph->width);
-				uint8_t	h		= pgm_read_byte(&glyph->height);
-				// Is there an associated bitmap?
-				if ((w > 0) && (h > 0))
+				coord_t xo = (int8_t)pgm_read_byte(&glyph->xOffset); // sic
+				if(wrap && ((cursor_x + textsize * (xo + w)) >= bound_x2))
 				{
-					coord_t xo = (int8_t)pgm_read_byte(&glyph->xOffset); // sic
-					if(wrap && ((cursor_x + textsize * (xo + w)) >= bound_x2))
-					{
-						// Drawing character would go off right edge; wrap to new line
-						cursor_x	= bound_x1;
-						cursor_y += (coord_t)textsize *
-						(uint8_t)pgm_read_byte(&gfxFont->yAdvance);
-					}
-					HW::drawCharGFX(cursor_x, cursor_y, c, textcolor, textbgcolor, textsize);
+					// Drawing character would go off right edge; wrap to new line
+					cursor_x	= bound_x1;
+					cursor_y += (coord_t)textsize *
+					(uint8_t)pgm_read_byte(&gfxFont->yAdvance);
 				}
-				cursor_x += pgm_read_byte(&glyph->xAdvance) * (coord_t)textsize;
+				HW::drawCharGFX(cursor_x, cursor_y, c, textcolor, textbgcolor, textsize);
 			}
+			cursor_x += pgm_read_byte(&glyph->xAdvance) * (coord_t)textsize;
 		}
 	}
 	return 1;
-}
-
-// Draw a character with built-in font
-template<class HW>
-void PDQ_GFX<HW>::drawChar(coord_t x, coord_t y, unsigned char c, color_t color, color_t bg, uint8_t size)
-{
-  if ((x >= _width)  ||
-    (y >= _height) ||
-    ((x + (6 * size) - 1) < 0) ||
-    ((y + (8 * size) - 1) < 0))
-    return;
-
-  uint8_t is_opaque = (bg != color);
-
-  if(!_cp437 && (c >= 176))	// Handle 'classic' charset behavior
-    c++;
-
-  for (int8_t i=0; i<6; i++)
-  {
-    uint8_t line;
-
-    if (i == 5)
-      line = 0x0;
-    else
-      line = pgm_read_byte(glcdfont+(c*5)+i);
-
-    if (size == 1)
-    {
-      for (int8_t j = 0; j < 8; j++)
-      {
-        if (line & 0x1)
-        {
-          HW::drawPixel(x+i, y+j, color);
-        }
-        else if (is_opaque)
-        {
-          HW::drawPixel(x+i, y+j, bg);
-        }
-        line >>= 1;
-      }
-    }
-    else
-    {
-      for (int8_t j = 0; j < 8; j++)
-      {
-        if (line & 0x1)
-        {
-          HW::fillRect(x+(i*size), y+(j*size), size, size, color);
-        }
-        else if (is_opaque)
-        {
-          HW::fillRect(x+(i*size), y+(j*size), size, size, bg);
-        }
-        line >>= 1;
-      }
-    }
-  }
 }
 
 // Draw a character with GFX font
@@ -842,8 +757,8 @@ template<class HW>
 void PDQ_GFX<HW>::drawCharGFX(coord_t x, coord_t y, unsigned char c, color_t color, color_t /*bg*/, uint8_t size)
 {
   // Character is assumed previously filtered by write() to eliminate
-  // newlines, returns, non-printable characters, etc.	Calling drawChar()
-  // directly with 'bad' characters of font may cause mayhem!
+  // newlines, returns, non-printable characters, etc. Calling this method
+  // directly with characters outside the font may cause mayhem!
 
   c -= pgm_read_byte(&gfxFont->first);
   GFXglyph *glyph	= &(((GFXglyph *)pgm_read_pointer(&gfxFont->glyph))[c]);
@@ -860,7 +775,7 @@ void PDQ_GFX<HW>::drawCharGFX(coord_t x, coord_t y, unsigned char c, color_t col
 
   // NOTE: THERE IS NO 'BACKGROUND' COLOR OPTION ON CUSTOM FONTS.
   // THIS IS ON PURPOSE AND BY DESIGN.  The background color feature
-  // has typically been used with the 'classic' font to overwrite old
+  // has typically been used with fixed-width fonts to overwrite old
   // screen contents with new data.  This ONLY works because the
   // characters are a uniform size; it's not a sensible thing to do with
   // proportionally-spaced fonts with glyphs of varying sizes (and that
@@ -1033,28 +948,12 @@ void PDQ_GFX<HW>::setRotation(uint8_t x)
 }
 
 template<class HW>
-void PDQ_GFX<HW>::cp437(boolean x)
-{
-	_cp437 = x;
-}
-
-template<class HW>
 void PDQ_GFX<HW>::setFont(const GFXfont *f)
 {
-	if (f)		// Font struct pointer passed in?
+	if (f && !gfxFont)
 	{
-		if (!gfxFont) // And no current font struct?
-		{
-			// Switching from classic to new font behavior.
-			// Move cursor pos down 6 pixels so it's on baseline.
-			cursor_y += 6;
-		}
-	}
-	else if (gfxFont) // NULL passed.	Current font struct defined?
-	{
-		// Switching from new to classic font behavior.
-		// Move cursor pos up 6 pixels so it's at top-left of char.
-		cursor_y -= 6;
+		// Move the cursor to the baseline used by custom fonts.
+		cursor_y += 6;
 	}
 	gfxFont = (GFXfont *)f;
 }
@@ -1071,6 +970,9 @@ void PDQ_GFX<HW>::getTextBounds(const char *str, coord_t x, coord_t y, int16_t *
 	*x1 = x;
 	*y1 = y;
 	*w	= *h = 0;
+
+	if (!gfxFont)
+		return;
 
 	if (gfxFont)
 	{
@@ -1134,44 +1036,6 @@ void PDQ_GFX<HW>::getTextBounds(const char *str, coord_t x, coord_t y, int16_t *
 			*h	= maxy - miny + 1;
 
 	}
-	else	// Default font
-	{
-		uint16_t lineWidth = 0, maxWidth = 0; // Width of current, all lines
-
-		while((c = *str++))
-		{
-			if (c != '\n') // Not a newline
-			{
-				if (c != '\r') // Not a carriage return, is normal char
-				{
-					lineWidth += textsize * 6; // Includes interchar x gap
-					if (wrap && (cursor_x > (_width - textsize*6)))
-					{
-						x = 0;
-						y += textsize*8;
-
-						if (lineWidth > maxWidth)	// Save widest line
-							maxWidth = lineWidth;
-						lineWidth	= textsize * 6; // First char on new line
-					}
-				} // Carriage return = do nothing
-			}
-			else // Newline
-			{
-				x	= 0;						// Reset x to 0
-				y += textsize * 8; 				// Advance y by 1 line
-				if (lineWidth > maxWidth)		// Save widest line
-					maxWidth = lineWidth;
-				lineWidth = 0;					// Reset lineWidth for new line
-			}
-		}
-		// End of string
-		if (lineWidth) 							// Add height of last (or only) line
-			y += textsize * 8;
-		*w = maxWidth - 1;						// Don't include last interchar x gap
-		*h = y - *y1;
-
-	} // End classic vs custom font
 }
 
 // Same as above, but for PROGMEM strings
@@ -1186,6 +1050,9 @@ void PDQ_GFX<HW>::getTextBounds(const __FlashStringHelper *str, coord_t x, coord
 	*x1 = x;
 	*y1 = y;
 	*w	= *h = 0;
+
+	if (!gfxFont)
+		return;
 
 	if (gfxFont)
 	{
@@ -1250,46 +1117,6 @@ void PDQ_GFX<HW>::getTextBounds(const __FlashStringHelper *str, coord_t x, coord
 			*h	= maxy - miny + 1;
 
 	}
-	else	 // Default font
-	{
-		uint16_t lineWidth = 0, maxWidth = 0; // Width of current, all lines
-
-		while((c = pgm_read_byte(s++)))
-		{
-			if (c != '\n') // Not a newline
-			{
-				if (c != '\r') // Not a carriage return, is normal char
-				{
-					if (wrap && ((x + textsize * 6) >= _width))
-					{
-						x = 0;						// Reset x to 0
-						y += textsize * 8;			// Advance y by 1 line
-						if (lineWidth > maxWidth)	// Save widest line
-							maxWidth = lineWidth;
-						lineWidth	= textsize * 6; // First char on new line
-					}
-					else // No line wrap, just keep incrementing X
-					{
-						lineWidth += textsize * 6; // Includes interchar x gap
-					}
-				} // Carriage return = do nothing
-			}
-			else // Newline
-			{
-				x = 0;								// Reset x to 0
-				y += textsize * 8;					// Advance y by 1 line
-				if (lineWidth > maxWidth)			// Save widest line
-					maxWidth = lineWidth;
-				lineWidth = 0;						// Reset lineWidth for new line
-			}
-		}
-		// End of string
-		if (lineWidth) 								// Add height of last (or only) line
-			y += textsize * 8;
-		*w = maxWidth - 1;							// Don't include last interchar x gap
-		*h = y - *y1;
-
-	} // End classic vs custom font
 }
 
 template<class HW>

@@ -44,9 +44,6 @@ opportunity to add new features by "creating" room. Below is a list of places yo
 I added lots of bounds checking, especially on string writes, that, if removed, could free a good number of bytes.
 While keeping them is best practice, for a non-IoT, non-critical piece of hardware, it shouldn't be a huge issue.
 
-I added the RACK to the CAT to better emulate the FT-817 (I hope, at least!). Removing the RACK's and just leaving
-the default ACK's will also free up bytes.
-
 I added a bunch of strings to the menuing with the intention of helping people understand their functions, but
 technically they're not necessary, and could all be removed.
 
