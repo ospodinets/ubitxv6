@@ -15,7 +15,6 @@
  *  * A tone output pin to provide audio feedback to the operator when sending CW
  *  * Three filter selection output control pins
  *  * A CW keydown output
- *  * Optionally, a serial CAT interface
  */
 
 static const uint8_t PIN_ENC_A = A0;          // Tuning encoder interface

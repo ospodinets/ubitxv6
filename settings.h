@@ -101,7 +101,6 @@ struct SettingsRam
   bool splitOn;
 
   bool txActive;
-  bool txCatActive;
   uint32_t cwExpirationTimeMs;
   bool morseMenuOn;
 };

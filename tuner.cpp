@@ -122,7 +122,7 @@ void setFrequency(const unsigned long freq,
 }
 
 /**
- * startTx is called by the PTT, cw keyer and CAT protocol to
+ * startTx is called by the PTT and cw keyer to
  * put the uBitx in tx mode. It takes care of rit settings, sideband settings
  * Note: In cw mode, doesnt key the radio, only puts it in tx mode
  * CW offest is calculated as lower than the operating frequency when in LSB mode, and vice versa in USB mode

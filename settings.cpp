@@ -89,7 +89,6 @@ void LoadDefaultSettings()
   globalSettings.splitOn = false;
 
   globalSettings.txActive = false;
-  globalSettings.txCatActive = false;
   globalSettings.cwExpirationTimeMs = 0;
   globalSettings.morseMenuOn = false;
 }

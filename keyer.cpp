@@ -135,7 +135,6 @@ void cwKeyer(void){
         return;//Tx stop control by Main Loop
       }
 
-      checkCAT();
     } //end of while
     
   }
@@ -218,9 +217,7 @@ void cwKeyer(void){
           break;
       }
   
-      checkCAT();
     } //end of while
   }//end of KEYER_IAMBIC_*
 }
-
 
