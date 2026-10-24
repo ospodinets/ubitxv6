@@ -57,12 +57,23 @@ uint16_t touchReadChannel(uint8_t channel_command){
   return tmpH << 5 | tmpL >> 3;
 }
 
+static void endTouchTransaction(const uint8_t previous_spcr, const uint8_t previous_spsr){
+  digitalWrite(PIN_TOUCH_CS, HIGH);
+  SPI.endTransaction();
+  SPCR = previous_spcr;
+  SPSR = previous_spsr & _BV(SPI2X);
+}
+
 void touch_update(){
   uint32_t now = millis();
   if (now - msraw < MSEC_THRESHOLD){
     return;
   }
+  msraw = now;
   
+  digitalWrite(PIN_TFT_CS, HIGH);
+  const uint8_t previous_spcr = SPCR;
+  const uint8_t previous_spsr = SPSR;
   SPI.beginTransaction(spiSettingsTouch);
   digitalWrite(PIN_TOUCH_CS, LOW);
 
@@ -74,8 +85,7 @@ void touch_update(){
 
   zraw = z;
   if (zraw < Z_THRESHOLD) {//Don't bother reading x/y if we're not being touched
-    digitalWrite(PIN_TOUCH_CS, HIGH);
-    SPI.endTransaction();
+    endTouchTransaction(previous_spcr, previous_spsr);
     return;
   }
 
@@ -88,13 +98,11 @@ void touch_update(){
   data[4] = touchReadChannel(MEASURE_X);
   data[5] = touchReadChannel(MEASURE_Y & ~POWER_ADC_REF);//Turn off sensor
 
-  digitalWrite(PIN_TOUCH_CS, HIGH);
-  SPI.endTransaction();
+  endTouchTransaction(previous_spcr, previous_spsr);
   
   int16_t x = touch_besttwoavg( data[0], data[2], data[4] );
   int16_t y = touch_besttwoavg( data[1], data[3], data[5] );
 
-  msraw = now;  // good read completed, set wait
   switch (rotation) {
     case 0:
     xraw = 4095 - y;
