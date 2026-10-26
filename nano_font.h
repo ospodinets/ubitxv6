@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "PDQ_MinLib/gfxfont.h"
 
-extern const GFXfont* ubitx_font;
+const GFXfont* font_sans_bold();
+const GFXfont* font_picopixel();
+const GFXfont* font_oxygen_mono();
 
 #endif //_NANO_FONT

@@ -156,6 +156,7 @@ public:
 	static inline uint8_t getRotation() __attribute__ ((always_inline))		{ return rotation; }
 	static inline coord_t getCursorX() __attribute__ ((always_inline))		{ return cursor_x; }
 	static inline coord_t getCursorY() __attribute__ ((always_inline))		{ return cursor_y; }
+	static inline GFXfont* getFont() __attribute__ ((always_inline))		{ return gfxFont; }
 	static inline void getTextBounds(const char *string, coord_t x, coord_t y, int16_t *x1, int16_t *y1, uint16_t *w, uint16_t *h, coord_t wi = _width);
 	static inline void getTextBounds(const __FlashStringHelper *s, coord_t x, coord_t y, int16_t *x1, int16_t *y1, uint16_t *w, uint16_t *h, coord_t wi = _width);
 

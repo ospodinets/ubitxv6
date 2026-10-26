@@ -6,6 +6,7 @@
 #include "scratch_space.h"
 #include "settings.h"
 #include "touch.h"
+#include "nano_font.h"
 
 #include <SPI.h>
 #include <avr/pgmspace.h>
@@ -32,7 +33,7 @@ void displayInit(void){
   digitalWrite(PIN_TFT_CS,HIGH);//Disable writing for now
 
   tft.begin();
-  tft.setFont(ubitx_font);
+  tft.setFont(font_sans_bold());
   tft.setTextWrap(true);
   tft.setTextColor(DISPLAY_GREEN,DISPLAY_BLACK);
   tft.setTextSize(1);
@@ -77,27 +78,41 @@ void displayRawText(const char *text, int x1, int y1, int w, int color, int back
   tft.print(text);
 }
 
-void displayText(const char *const text, int x1, int y1, int w, int h, int color, int background, int border, TextJustification_e justification)
+void displayText(const char *const text, int x1, int y1, int w, int h, const Style& style)
 {
-  displayFillrect(x1, y1, w ,h, background);
-  displayRect(x1, y1, w ,h, border);
+  tft.setFont(style.fontFamily == FontFamily_e::SansBold ? font_sans_bold() : style.fontFamily == FontFamily_e::PicoPixel ? font_picopixel() : font_oxygen_mono());
+  tft.setTextSize(style.fontSize);
+  displayText(text, x1, y1, w, h, style.textColor, style.backgroundColor, style.borderColor, style.justification);
+}
+
+void displayText(const char *const text, int x1, int y1, int w, int h, int color, int background, int border,
+   TextJustification_e justification)
+{
+  displayFillrect(x1, y1, w, h, background);
+  displayRect(x1, y1, w, h, border);
 
   int16_t x1_out;
   int16_t y1_out;
   uint16_t width_out;
   uint16_t height_out;
-  tft.getTextBounds(text,x1,y1,&x1_out,&y1_out,&width_out,&height_out,w);
-  if(TextJustification_e::Center == justification){
-    x1 += (w - ( (int32_t)width_out + (x1_out-x1)))/2;
+  tft.getTextBounds(text, x1, y1, &x1_out, &y1_out, &width_out, &height_out, w);
+  if (TextJustification_e::Center == justification)
+  {
+    x1 += (w - ((int32_t)width_out + (x1_out - x1))) / 2;
   }
-  else if(TextJustification_e::Right == justification){
-    x1 += w - ((int32_t)width_out + (x1_out-x1));
+  else if (TextJustification_e::Right == justification)
+  {
+    x1 += w - ((int32_t)width_out + (x1_out - x1));
   }
-  else{
-    x1 += 2;//Give a little bit of padding from the border
+  else
+  {
+    x1 += 2; // Give a little bit of padding from the border
   }
-  y1 += (ubitx_font->yAdvance + h - ( (int32_t)height_out))/2;
-  displayRawText(text,x1,y1,w,color,background);
+
+  const GFXfont *font = tft.getFont();
+  const uint8_t yAdvance = pgm_read_byte(&font->yAdvance);
+  y1 += (yAdvance + h - static_cast<int32_t>(height_out)) / 2;
+  displayRawText(text, x1, y1, w, color, background);
 }
 
 void drawCross(int16_t x_center,int16_t y_center,uint16_t color)
