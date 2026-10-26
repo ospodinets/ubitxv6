@@ -6,11 +6,28 @@
 #include "nano_gui.h"
 #include "scratch_space.h"
 
+Style defaultInactiveStyle = {
+    COLOR_INACTIVE_TEXT,
+    COLOR_INACTIVE_BACKGROUND,
+    COLOR_INACTIVE_BORDER,
+    TextJustification_e::Center,
+    FontFamily_e::SansBold,
+    1
+  };
+
+Style defaultActiveStyle = {
+    COLOR_ACTIVE_TEXT,
+    COLOR_ACTIVE_BACKGROUND,
+    COLOR_ACTIVE_BORDER,
+    TextJustification_e::Center,
+    FontFamily_e::SansBold,
+    1
+  };
+
 void drawButton(Button* button)
 {
-  uint16_t tc = COLOR_INACTIVE_TEXT;
-  uint16_t bgc = COLOR_INACTIVE_BACKGROUND;
-  const uint16_t bdc = COLOR_INACTIVE_BORDER;
+  char b[30];
+  Style* style = button->inactiveStyle ? button->inactiveStyle : &defaultInactiveStyle;
   switch(button->status())
   {
     case ButtonStatus_e::Stateless://Fallthrough intended
@@ -22,8 +39,7 @@ void drawButton(Button* button)
     }
     case ButtonStatus_e::Active:
     {
-      tc = COLOR_ACTIVE_TEXT;
-      bgc = COLOR_ACTIVE_BACKGROUND;
+      style = button->activeStyle ? button->activeStyle : &defaultActiveStyle;
       break;
     }
   }
@@ -40,7 +56,7 @@ void drawButton(Button* button)
     //Serial.println(F("No text for button!"));
     return;
   }
-  displayText(b, button->x, button->y, button->w, button->h, tc, bgc, bdc);
+  displayText(b, button->x, button->y, button->w, button->h, *style);
 }
 
 void extractAndDrawButton(Button* button_out, const Button* button_P)

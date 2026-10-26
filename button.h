@@ -2,12 +2,15 @@
 
 #include <stdint.h>
 
+enum FontFamily_e : uint8_t;
+
 enum ButtonStatus_e : uint8_t {
   Stateless,
   Inactive,
   Active
 };
 
+struct Style;
 struct Button {
   int16_t x, y, w, h;
   const char* text;//nullptr if text_override should be used
@@ -15,6 +18,9 @@ struct Button {
   ButtonStatus_e (*status)();//Used for coloring and morse menu
   void (*on_select)();//Action to take when selected
   char morse;
+  Style* inactiveStyle;//nullptr if default style should be used
+  Style* activeStyle;//nullptr if default style should be used
+
 };
 
 void extractAndDrawButton(Button* button_out, const Button* button_P);
