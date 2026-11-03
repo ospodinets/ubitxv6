@@ -1,4 +1,5 @@
 #include <avr/pgmspace.h>
+#include <string.h>
 
 #include "bands.h"
 #include "utils.h"
@@ -31,7 +32,7 @@ constexpr Band_t bands [] PROGMEM {
 //  {26965000UL, 27405000UL,  11, "CB"},//Citizen's Band
   {28000000UL, 29700000UL,  10, "10"},
 };
-constexpr uint8_t NUM_BANDS = sizeof(bands)/sizeof(bands[0]);
+uint8_t NUM_BANDS = sizeof(bands)/sizeof(bands[0]);
 
 int8_t findBandIndexFromBand(const uint8_t target_band)
 {
@@ -74,14 +75,13 @@ void getBandString(const unsigned long frequency,
   else{
     Band_t band;
     memcpy_P(&band,&bands[band_index],sizeof(band));
-    strncpy_P(band_string_out,band.name,max_string_length);
+    strncpy(band_string_out,band.name,max_string_length);
   }
 }
 
-uint32_t getFreqInBand(const uint32_t frequency,
-                       const uint8_t target_band)
+uint32_t getFreqInBandIdx(const uint32_t frequency,
+                          const int8_t target_band_index)
 {
-  int8_t target_band_index = findBandIndexFromBand(target_band);
   if(-1 == target_band_index){
     //Hard to target a band we don't know about...
     return frequency;
@@ -108,6 +108,13 @@ uint32_t getFreqInBand(const uint32_t frequency,
   }
 }
 
+uint32_t getFreqInBand(const uint32_t frequency,
+                       const uint8_t target_band)
+{
+  int8_t target_band_index = findBandIndexFromBand(target_band);
+  return getFreqInBandIdx(frequency, target_band_index);
+}
+
 bool isFreqInBand(const uint32_t frequency,
                   const uint8_t check_band)
 {
@@ -128,3 +135,24 @@ bool isFreqInBand(const uint32_t frequency,
   return false;
 }
 
+uint32_t getNextBandFreq(const uint32_t frequency, bool forward)
+{
+  int8_t current_band_index = findBandIndexFromFreq(frequency);
+
+  if(-1 == current_band_index){
+    //We're not in a known band - just go to the center of the first band
+    Band_t band;
+    memcpy_P(&band,&bands[0],sizeof(band));
+    return band.min + ((band.max - band.min)/2/100)*100;//midpoint truncated to 100Hz resolution
+  }
+
+  int8_t next_band_index = current_band_index + (forward ? 1 : -1);
+  if(next_band_index < 0){
+    next_band_index = NUM_BANDS - 1;
+  }
+  else if(next_band_index >= NUM_BANDS){
+    next_band_index = 0;
+  }
+
+  return getFreqInBandIdx(frequency, next_band_index);
+}

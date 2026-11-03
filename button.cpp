@@ -11,7 +11,7 @@ Style defaultInactiveStyle = {
     COLOR_INACTIVE_BACKGROUND,
     COLOR_INACTIVE_BORDER,
     TextJustification_e::Center,
-    FontFamily_e::SansBold,
+    FontFamily_e::Regular,
     1
   };
 
@@ -20,7 +20,7 @@ Style defaultActiveStyle = {
     COLOR_ACTIVE_BACKGROUND,
     COLOR_ACTIVE_BORDER,
     TextJustification_e::Center,
-    FontFamily_e::SansBold,
+    FontFamily_e::Regular,
     1
   };
 

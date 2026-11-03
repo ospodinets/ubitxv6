@@ -10,9 +10,11 @@ enum TextJustification_e : uint8_t
 
 enum FontFamily_e : uint8_t
 {
-  SansBold,
-  PicoPixel,
-  OxygenMono
+  Regular,
+  SmallTitles,
+  BigDigits,
+  SmallDigits,
+  Icons,
 };
 
 struct Style

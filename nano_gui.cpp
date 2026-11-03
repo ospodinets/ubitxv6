@@ -23,6 +23,26 @@ PDQ_ILI9341 tft;
 
 #include "nano_font.h"
 
+const GFXfont* getFont(FontFamily_e fontFamily)
+{
+  switch (fontFamily)
+  {
+    case FontFamily_e::Regular:
+      return font_regular();
+    case FontFamily_e::SmallTitles:
+      return font_small_titles();
+    case FontFamily_e::BigDigits:
+      return font_big_digits();
+    case FontFamily_e::SmallDigits:
+      return font_small_digits();
+    case FontFamily_e::Icons:
+      return font_icons();
+    default:
+      return font_regular();
+  }
+}
+
+
 void displayInit(void){
   //Pulling this low 6 times should exit deep sleep mode
   pinMode(PIN_TFT_CS,OUTPUT);
@@ -33,7 +53,7 @@ void displayInit(void){
   digitalWrite(PIN_TFT_CS,HIGH);//Disable writing for now
 
   tft.begin();
-  tft.setFont(font_sans_bold());
+  tft.setFont(font_regular());
   tft.setTextWrap(true);
   tft.setTextColor(DISPLAY_GREEN,DISPLAY_BLACK);
   tft.setTextSize(1);
@@ -80,11 +100,12 @@ void displayRawText(const char *text, int x1, int y1, int w, int color, int back
 
 void displayText(const char *const text, int x1, int y1, int w, int h, const Style& style)
 {
-  tft.setFont(style.fontFamily == FontFamily_e::SansBold ? font_sans_bold() : style.fontFamily == FontFamily_e::PicoPixel ? font_picopixel() : font_oxygen_mono());
+  tft.setFont(getFont(style.fontFamily));
   tft.setTextSize(style.fontSize);
   displayText(text, x1, y1, w, h, style.textColor, style.backgroundColor, style.borderColor, style.justification);
 }
 
+// deprecated
 void displayText(const char *const text, int x1, int y1, int w, int h, int color, int background, int border,
    TextJustification_e justification)
 {

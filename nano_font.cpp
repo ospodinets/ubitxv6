@@ -1,23 +1,31 @@
 #include "nano_font.h"
 #include <avr/pgmspace.h>
 
-#include "PDQ_MinLib/FreeSansBold9pt7b.h"
+#include "PDQ_MinLib/RobotoCondensed_Bold10pt7b.h"
+#include "PDQ_MinLib/B612Mono_Bold20pt7b_stripped.h"
+#include "PDQ_MinLib/B612Mono_Bold10pt7b_stripped.h"
 #include "PDQ_MinLib/Picopixel.h"
-#include "PDQ_MinLib/OxygenMono_Regular20pt7b.h"
-//#include "PDQ_MinLib/org_01.h"
-//#include "PDQ_MinLib/TomThumb.h"
+#include "PDQ_MinLib/Icons.h"
 
-const GFXfont* font_sans_bold()
+
+const GFXfont* font_regular()
 {
-  return &FreeSansBold9pt7b;
+  return &RobotoCondensed_Bold10pt7b;
 }
-
-const GFXfont* font_picopixel()
+const GFXfont* font_small_titles()
 {
   return &Picopixel;
 }
-
-const GFXfont* font_oxygen_mono()
+const GFXfont* font_big_digits()
 {
-  return &OxygenMono_Regular20pt7b;
+  return &B612Mono_Bold20pt7b;
+}
+const GFXfont* font_small_digits()
+{
+  return &B612Mono_Bold10pt7b;
+}
+
+const GFXfont* font_icons()
+{
+  return &Icons;
 }

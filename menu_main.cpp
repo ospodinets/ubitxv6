@@ -39,6 +39,7 @@ void drawMainMenu(void)
     memcpy_P(&bp, &(mainMenuButtons[i]), sizeof(bp));
     extractAndDrawButton(&button,bp);
   }
+  drawVfo();
   drawVersion();
   drawCallsign();
 
@@ -58,26 +59,25 @@ void drawMainMenuIncrement()
 
   Button button;
 
-  if((last_freq != GetActiveVfoFreq())
-   ||(last_vfo != globalSettings.activeVfo)){
-    extractAndDrawButton(&button,&bVfoA);
-    extractAndDrawButton(&button,&bVfoB);
-    updateBandButtons(last_freq);
+  if ((last_freq != GetActiveVfoFreq()) || (last_vfo != globalSettings.activeVfo))
+  {
+    drawVfo();
+    drawBand();
     last_freq = GetActiveVfoFreq();
     last_vfo = globalSettings.activeVfo;
-    
-    //We set this here so that we're always hearing what's displayed
+
+    // We set this here so that we're always hearing what's displayed
     setFrequency(last_freq);
   }
 
-  if(last_mode != GetActiveVfoMode()){
-    updateSidebandButtons();
+  if (last_mode != GetActiveVfoMode())
+  {
+    updateSidebandButton();
     last_mode = GetActiveVfoMode();
   }
 
   if(last_split != globalSettings.splitOn){
-    extractAndDrawButton(&button,&bVfoA);
-    extractAndDrawButton(&button,&bVfoB);
+    drawVfo();
     extractAndDrawButton(&button,&bSpl);
     last_split = globalSettings.splitOn;
   }
