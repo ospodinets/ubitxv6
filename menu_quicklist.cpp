@@ -28,11 +28,8 @@ int16_t quickListMenuSelectedItemRaw = 0;//Allow negative only for easier checks
 void drawQuickList(void)
 {
   displayFillrect(0,47,320,200,COLOR_BACKGROUND);
-  Button button;
-  Button* bp;
   for(uint8_t i = 0; i < QUICKLIST_MENU_NUM_BUTTONS; ++i){
-    memcpy_P(&bp, &(quickListMenuButtons[i]), sizeof(bp));
-    extractAndDrawButton(&button,bp);
+    drawButton(quickListMenuButtons[i]);
   }
   strncpy_P(b,(const char*)F("Short press = load\nLong press = save"),sizeof(b));
   displayText(b,10,47,170,200,COLOR_TEXT,COLOR_BACKGROUND,COLOR_BACKGROUND);

@@ -180,7 +180,7 @@ ButtonStatus_e bsIgnore();
 void toSSB(char* text_out, const uint16_t max_text_size);
 ButtonStatus_e bsSSB();
 void osSSB();
-constexpr Button bSSB PROGMEM = {
+constexpr Button bSSB = {
   LAYOUT_SSB_X,
   LAYOUT_SSB_Y,
   LAYOUT_SSB_WIDTH,
@@ -206,7 +206,7 @@ Style styleVfoSec = {
 void toVfoSec(char* text_out, const uint16_t max_text_size);
 ButtonStatus_e bsVfoSec();
 void osVfoSec();
-constexpr Button bVfoSec PROGMEM = {
+constexpr Button bVfoSec = {
   LAYOUT_VFO_SEC_X,
   LAYOUT_VFO_SEC_Y,
   LAYOUT_VFO_SEC_WIDTH,
@@ -223,7 +223,7 @@ constexpr Button bVfoSec PROGMEM = {
 constexpr char txtSpl [] PROGMEM = "SPL";
 ButtonStatus_e bsSpl();
 void osSpl();
-constexpr Button bSpl PROGMEM = {
+constexpr Button bSpl = {
   LAYOUT_BUTTON_X,
   LAYOUT_BUTTON_Y,
   LAYOUT_BUTTON_WIDTH,
@@ -238,7 +238,7 @@ constexpr Button bSpl PROGMEM = {
 constexpr char txtRit [] PROGMEM = "RIT";
 ButtonStatus_e bsRit();
 void osRit();
-constexpr Button bRit PROGMEM = {
+constexpr Button bRit = {
   LAYOUT_BUTTON_X + LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -253,7 +253,7 @@ constexpr Button bRit PROGMEM = {
 constexpr char txtCw [] PROGMEM = "CW";
 ButtonStatus_e bsCw();
 void osCw();
-constexpr Button bCw PROGMEM = {
+constexpr Button bCw = {
   LAYOUT_BUTTON_X + 2*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -268,7 +268,7 @@ constexpr Button bCw PROGMEM = {
 constexpr char txtUp [] PROGMEM = "UP";
 ButtonStatus_e bsUp();
 void osUp();
-constexpr Button bUp PROGMEM = {
+constexpr Button bUp = {
   LAYOUT_BUTTON_X + 3*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -283,7 +283,7 @@ constexpr Button bUp PROGMEM = {
 constexpr char txtDown [] PROGMEM = "DN";
 ButtonStatus_e bsDown();
 void osDown();
-constexpr Button bDown PROGMEM = {
+constexpr Button bDown = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -315,7 +315,7 @@ Style styleIconicInactive = {
 
 constexpr char txtQuickList [] PROGMEM = "\x01";//star icon
 void osQuickList();
-constexpr Button bQuickList PROGMEM = {
+constexpr Button bQuickList = {
   LAYOUT_BUTTON_X + 2*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 1*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -332,7 +332,7 @@ constexpr Button bQuickList PROGMEM = {
 constexpr char txtMenu [] PROGMEM = "\x02";//gear icon
 ButtonStatus_e bsIgnore();
 void osMenu();
-constexpr Button bMenu PROGMEM = {
+constexpr Button bMenu = {
   LAYOUT_BUTTON_X + 3*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 1*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -349,7 +349,7 @@ constexpr Button bMenu PROGMEM = {
 constexpr char txtNumpad [] PROGMEM = "\x03";//numpad icon
 ButtonStatus_e bsIgnore();
 void osNumpad();
-constexpr Button bNumpad PROGMEM = {
+constexpr Button bNumpad = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 1*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -363,7 +363,7 @@ constexpr Button bNumpad PROGMEM = {
   &styleIconicActive
 };
 
-const Button* const mainMenuButtons [] PROGMEM = {
+const Button* const mainMenuButtons [] = {
     &bSSB,
     &bVfoSec,
     &bSpl, &bRit, &bCw, &bUp, &bDown,
@@ -438,8 +438,7 @@ void osVfoSec()
   ltoa(GetActiveVfoFreq(), b, 10);
   morseText(b);
 
-  Button button;
-  extractAndDrawButton(&button, &bVfoSec);
+  drawButton(&bVfoSec);
   drawVfo();
   drawBand();
   updateSidebandButton();
@@ -451,7 +450,6 @@ ButtonStatus_e bsRit(){
 
 void osRit()
 {
-  Button button;
   if (!globalSettings.ritOn)
   {
     globalSettings.ritOn = true;
@@ -463,14 +461,13 @@ void osRit()
     setFrequency(globalSettings.ritFrequency);
   }
 
-  extractAndDrawButton(&button, &bVfoSec);
-  extractAndDrawButton(&button, &bRit);
+  drawButton(&bVfoSec);
+  drawButton(&bRit);
 }
 
 void updateSidebandButton()
 {
-  Button button;
-  extractAndDrawButton(&button, &bSSB);
+  drawButton(&bSSB);
 }
 
 void toSSB(char* text_out, const uint16_t max_text_size)
@@ -501,8 +498,7 @@ void osSSB()
   setFrequency(GetActiveVfoFreq());
   SaveSettingsToEeprom();
 
-  Button button;
-  extractAndDrawButton(&button, &bSSB);
+  drawButton(&bSSB);
 }
 
 ButtonStatus_e bsCw()
@@ -523,8 +519,7 @@ void osCw()
 
   setFrequency(GetActiveVfoFreq());
 
-  Button button;
-  extractAndDrawButton(&button, &bCw);
+  drawButton(&bCw);
 }
 
 ButtonStatus_e bsSpl()
@@ -536,9 +531,8 @@ void osSpl()
 {
   globalSettings.splitOn = !globalSettings.splitOn;
 
-  Button button;
-  extractAndDrawButton(&button, &bSpl);
-  extractAndDrawButton(&button, &bVfoSec);
+  drawButton(&bSpl);
+  drawButton(&bVfoSec);
 }
 
 void osUp()

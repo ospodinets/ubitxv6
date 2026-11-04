@@ -1,8 +1,5 @@
 #include "button.h"
 
-#include <string.h>
-#include <avr/pgmspace.h>
-
 #include "color_theme.h"
 #include "nano_gui.h"
 #include "scratch_space.h"
@@ -25,9 +22,8 @@ Style defaultActiveStyle = {
     1
   };
 
-void drawButton(Button* button)
+void drawButton(const Button* button)
 {
-  char b[30];
   Style* style = button->inactiveStyle ? button->inactiveStyle : &defaultInactiveStyle;
   switch(button->status())
   {
@@ -47,21 +43,17 @@ void drawButton(Button* button)
 
 
   if(nullptr != button->text){
-    strncpy_P(b,button->text,sizeof(b));
+    displayText(button->text, button->x, button->y, button->w, button->h, *style);
   }
   else if(nullptr != button->text_override){
-    button->text_override(b,sizeof(b));
+    char text[30] = {0};
+    button->text_override(text,sizeof(text));
+    text[sizeof(text) - 1] = '\0';
+    displayText(text, button->x, button->y, button->w, button->h, *style);
   }
   else{
     //Something's messed up
     //Serial.println(F("No text for button!"));
     return;
   }
-  displayText(b, button->x, button->y, button->w, button->h, *style);
-}
-
-void extractAndDrawButton(Button* button_out, const Button* button_P)
-{
-  memcpy_P(button_out,button_P,sizeof(*button_out));
-  drawButton(button_out);
 }

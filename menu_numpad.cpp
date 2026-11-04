@@ -27,11 +27,8 @@ int16_t numpadMenuSelectedItemRaw = 0;//Allow negative only for easier checks on
 void drawNumpad(void)
 {
   displayFillrect(0,47,320,200,COLOR_BACKGROUND);
-  Button button;
-  Button* bp;
   for(uint8_t i = 0; i < NUMPAD_MENU_NUM_BUTTONS; ++i){
-    memcpy_P(&bp, &(numpadMenuButtons[i]), sizeof(bp));
-    extractAndDrawButton(&button,bp);
+    drawButton(numpadMenuButtons[i]);
   }
 }
 

@@ -1,8 +1,5 @@
 #include "menu_np_ql_shared.h"
 
-#include <string.h>
-#include <avr/pgmspace.h>
-
 #include "button.h"
 #include "menu_utils.h"
 
@@ -17,19 +14,16 @@ MenuReturn_e runNpQlShared(const ButtonPress_e tuner_button,
 {
   if(ButtonPress_e::NotPressed != tuner_button){
     uint8_t menu_index = *menuSelectedItemRaw/MENU_KNOB_COUNTS_PER_ITEM;
-    Button button;
-    Button* bp;
-    memcpy_P(&bp,&(menu_buttons[menu_index]),sizeof(bp));
-    memcpy_P(&button,bp,sizeof(button));
+    const Button* button = menu_buttons[menu_index];
     *selection_mode = tuner_button;
-    button.on_select();
+    button->on_select();
   }//tuner_button
 
   else if(ButtonPress_e::NotPressed != touch_button){
-    Button button;
-    if(findPressedButton(menu_buttons,menu_num_buttons,&button,touch_point)){
+    const Button* button = findPressedButton(menu_buttons,menu_num_buttons,touch_point);
+    if(nullptr != button){
       *selection_mode = touch_button;
-      button.on_select();
+      button->on_select();
     }
     else{
       //Touch detected, but not on our buttons, so ignore

@@ -23,4 +23,4 @@ struct Button {
 
 };
 
-void extractAndDrawButton(Button* button_out, const Button* button_P);
+void drawButton(const Button* button);

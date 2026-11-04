@@ -4,10 +4,9 @@
 #include "menu.h"
 
 //Returns true if button was found, false otherwise
-bool findPressedButton(const Button* const* buttons,
-                       const uint8_t num_buttons,
-                       Button *const button_out,
-                       const Point touch_point);
+const Button* findPressedButton(const Button* const* buttons,
+                                const uint8_t num_buttons,
+                                const Point touch_point);
 
 enum MorsePlaybackType_e : uint8_t {
   PlayChar,

@@ -31,7 +31,7 @@ ButtonPress_e numpadSelectionMode;
           constexpr char txt##number [] PROGMEM = "" D_STRING(number);\
           ButtonStatus_e bs##number();\
           void os##number();\
-          constexpr Button b##number PROGMEM = {\
+          constexpr Button b##number = {\
             LAYOUT_BUTTON_X + x*LAYOUT_BUTTON_PITCH_X,\
             LAYOUT_BUTTON_Y + y*LAYOUT_BUTTON_PITCH_Y,\
             LAYOUT_BUTTON_WIDTH,\
@@ -64,7 +64,7 @@ NUMBER_BUTTON_GENERATE(0,3,1);
 
 constexpr char txtOk [] PROGMEM = "OK";
 void osOk();
-constexpr Button bOk PROGMEM = {
+constexpr Button bOk = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_PITCH_X,
   LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_PITCH_Y,
   LAYOUT_BUTTON_WIDTH,
@@ -78,7 +78,7 @@ constexpr Button bOk PROGMEM = {
 
 constexpr char txtBackspace [] PROGMEM = "<-";
 void osBackspace();
-constexpr Button bBackspace PROGMEM = {
+constexpr Button bBackspace = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_PITCH_X,
   LAYOUT_BUTTON_Y + 1*LAYOUT_BUTTON_PITCH_Y,
   LAYOUT_BUTTON_WIDTH,
@@ -92,7 +92,7 @@ constexpr Button bBackspace PROGMEM = {
 
 constexpr char txtCancel [] PROGMEM = "Can";
 void osCancel();
-constexpr Button bCancel PROGMEM = {
+constexpr Button bCancel = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_PITCH_X,
   LAYOUT_BUTTON_Y + 2*LAYOUT_BUTTON_PITCH_Y,
   LAYOUT_BUTTON_WIDTH,
@@ -105,7 +105,7 @@ constexpr Button bCancel PROGMEM = {
 };
 
 //Declare in menu select order, not graphical order
-const Button* const numpadMenuButtons [] PROGMEM = {
+const Button* const numpadMenuButtons [] = {
   &b1, &b2, &b3, &b4, &b5, &b6, &b7, &b8, &b9, &b0,
   &bOk, &bBackspace, &bCancel
 };

@@ -23,7 +23,7 @@ ButtonPress_e quickListSelectionMode;
 #define QUICKLIST_BUTTON_GENERATE(number) \
           void toQL##number(char* text_out, const uint16_t max_text_size);\
           void osQL##number();\
-          constexpr Button bQL##number PROGMEM = {\
+          constexpr Button bQL##number = {\
             LAYOUT_BUTTON_X,\
             LAYOUT_BUTTON_Y + number*LAYOUT_BUTTON_PITCH_Y,\
             LAYOUT_BUTTON_WIDTH,\
@@ -47,7 +47,7 @@ QUICKLIST_BUTTON_GENERATE(3);
 
 constexpr char txtQLCancel [] PROGMEM = "Can";
 void osQLCancel();
-constexpr Button bQLCancel PROGMEM = {
+constexpr Button bQLCancel = {
   LAYOUT_BUTTON_X,
   LAYOUT_BUTTON_Y + 4*LAYOUT_BUTTON_PITCH_Y,
   LAYOUT_BUTTON_WIDTH,
@@ -60,7 +60,7 @@ constexpr Button bQLCancel PROGMEM = {
 };
 
 //Declare in menu select order, not graphical order
-const Button* const quickListMenuButtons [] PROGMEM = {
+const Button* const quickListMenuButtons [] = {
   &bQL0, &bQL1, &bQL2, &bQL3, &bQLCancel
 };
 const uint8_t QUICKLIST_MENU_NUM_BUTTONS = sizeof(quickListMenuButtons)/sizeof(quickListMenuButtons[0]);

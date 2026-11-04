@@ -1,7 +1,6 @@
 #include "menu_main.h"
 #include "menu_main_buttons.h"
 
-#include <avr/pgmspace.h>
 #include <Arduino.h>
 
 #include "button.h"
@@ -33,11 +32,8 @@ int16_t mainMenuSelectedItemRaw = 0;//Allow negative only for easier checks on w
 void drawMainMenu(void)
 {
   displayClear(COLOR_BACKGROUND);
-  Button button;
-  Button* bp;
   for(uint8_t i = 0; i < MAIN_MENU_NUM_BUTTONS; ++i){
-    memcpy_P(&bp, &(mainMenuButtons[i]), sizeof(bp));
-    extractAndDrawButton(&button,bp);
+    drawButton(mainMenuButtons[i]);
   }
   drawVfo();
   drawVersion();
@@ -56,8 +52,6 @@ void drawMainMenuIncrement()
   static bool last_split = false;
   static bool last_rit = false;
   static TuningMode_e last_tuning = TuningMode_e::TUNE_SSB;
-
-  Button button;
 
   if ((last_freq != GetActiveVfoFreq()) || (last_vfo != globalSettings.activeVfo))
   {
@@ -78,17 +72,17 @@ void drawMainMenuIncrement()
 
   if(last_split != globalSettings.splitOn){
     drawVfo();
-    extractAndDrawButton(&button,&bSpl);
+    drawButton(&bSpl);
     last_split = globalSettings.splitOn;
   }
 
   if(last_rit != globalSettings.ritOn){
-    extractAndDrawButton(&button,&bRit);
+    drawButton(&bRit);
     last_rit = globalSettings.ritOn;
   }
 
   if(last_tuning != globalSettings.tuningMode){
-    extractAndDrawButton(&button,&bCw);
+    drawButton(&bCw);
     last_tuning = globalSettings.tuningMode;
   }
 }
@@ -125,12 +119,9 @@ MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
       {
         if(mainMenuSelecting){
           uint8_t menu_index = mainMenuSelectedItemRaw/MENU_KNOB_COUNTS_PER_ITEM;
-          Button button;
-          Button* bp;
-          memcpy_P(&bp,&(mainMenuButtons[menu_index]),sizeof(bp));
-          memcpy_P(&button,bp,sizeof(button));
-          endSelector(&button);
-          button.on_select();
+          const Button* button = mainMenuButtons[menu_index];
+          endSelector(button);
+          button->on_select();
         }
         else{
           initSelector(&mainMenuSelectedItemRaw,
@@ -164,9 +155,9 @@ MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
 
   else if(ButtonPress_e::NotPressed != touch_button){
     //We treat long and short presses the same, so no need to have a switch
-    Button button;
-    if(findPressedButton(mainMenuButtons,MAIN_MENU_NUM_BUTTONS,&button,touch_point)){
-      button.on_select();
+    const Button* button = findPressedButton(mainMenuButtons,MAIN_MENU_NUM_BUTTONS,touch_point);
+    if(nullptr != button){
+      button->on_select();
     }
     else{
       //Touch detected, but not on our buttons, so ignore
