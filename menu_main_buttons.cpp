@@ -9,6 +9,7 @@
 #include "button.h"
 #include "callsign.h"
 #include "color_theme.h"
+#include "label.h"
 #include "menu_main.h"
 #include "menu_numpad.h"
 #include "menu_quicklist.h"
@@ -39,10 +40,10 @@ static const unsigned int LAYOUT_TX_Y = LAYOUT_VBAT_TEXT_Y + LAYOUT_VBAT_TEXT_HE
 static const unsigned int LAYOUT_TX_WIDTH = 48;
 static const unsigned int LAYOUT_TX_HEIGHT = 32;
 
-static const unsigned int LAYOUT_VFO_MAIN_X = LAYOUT_TX_X + LAYOUT_TX_WIDTH + 3;
-static const unsigned int LAYOUT_VFO_MAIN_Y = LAYOUT_TX_Y - 6;
-static const unsigned int LAYOUT_VFO_MAIN_WIDTH = 230;
-static const unsigned int LAYOUT_VFO_MAIN_HEIGHT = 48;
+static const int16_t LAYOUT_VFO_MAIN_X = LAYOUT_TX_X + LAYOUT_TX_WIDTH + 3;
+static const int16_t LAYOUT_VFO_MAIN_Y = LAYOUT_TX_Y - 6;
+static const int16_t LAYOUT_VFO_MAIN_WIDTH = 230;
+static const int16_t LAYOUT_VFO_MAIN_HEIGHT = 48;
 
 static const unsigned int LAYOUT_SSB_X = LAYOUT_VFO_MAIN_X + LAYOUT_VFO_MAIN_WIDTH + 6;
 static const unsigned int LAYOUT_SSB_Y = LAYOUT_VFO_MAIN_Y;
@@ -129,18 +130,21 @@ Style styleVfoMain = {
     1
   };
 
+void toVfoMain(char* text_out, const uint16_t max_text_size);
+
+Label lVfoMain(
+  LAYOUT_VFO_MAIN_X, 
+  LAYOUT_VFO_MAIN_Y,
+  LAYOUT_VFO_MAIN_WIDTH,
+  LAYOUT_VFO_MAIN_HEIGHT,
+  nullptr,
+  &toVfoMain,
+  &styleVfoMain
+);
+
 void drawVfo()
 {
-  formatFreq(GetActiveVfoFreq(), b, sizeof(b));
-  for (char *c = b; *c; ++c)
-  {
-    if ('.' == *c)
-    {
-      *c = ':';
-    }
-  }
-  displayText(b, LAYOUT_VFO_MAIN_X, LAYOUT_VFO_MAIN_Y, LAYOUT_VFO_MAIN_WIDTH, LAYOUT_VFO_MAIN_HEIGHT,
-              styleVfoMain);
+  lVfoMain.draw();
 }
 
 Style styleBand = {
@@ -199,7 +203,7 @@ Style styleVfoSec = {
     COLOR_BACKGROUND,
     COLOR_BACKGROUND,
     TextJustification_e::Right,
-    FontFamily_e::Regular,
+    FontFamily_e::SmallDigits,
     1
   };
 
@@ -419,6 +423,13 @@ void toVfoSec(char *text_out, const uint16_t max_text_size)
     text_out[3] = '?';
     text_out[4] = '\0';
   }
+  for (char *c = text_out; *c; ++c)
+  {
+    if ('.' == *c)
+    {
+      *c = ':';
+    }
+  }
 }
 
 ButtonStatus_e bsVfoSec(){
@@ -468,6 +479,31 @@ void osRit()
 void updateSidebandButton()
 {
   drawButton(&bSSB);
+}
+
+void toVfoMain(char* text_out, const uint16_t max_text_size)
+{
+  if (max_text_size < 2)
+  {
+    return; // Can't do much with that space
+  }
+
+  if (max_text_size < (3 + 10 + 1))
+  {
+    // Give an indicator that's debuggable
+    text_out[0] = 'X';
+    text_out[1] = '\0';
+    return;
+  }
+
+  formatFreq(GetActiveVfoFreq(), text_out, max_text_size);
+  for (char *c = text_out; *c; ++c)
+  {
+    if ('.' == *c)
+    {
+      *c = ':';
+    }
+  }
 }
 
 void toSSB(char* text_out, const uint16_t max_text_size)
