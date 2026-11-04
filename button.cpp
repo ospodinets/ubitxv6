@@ -1,5 +1,6 @@
 #include "button.h"
 
+#include <string.h>
 #include <avr/pgmspace.h>
 
 #include "color_theme.h"

@@ -1,6 +1,7 @@
 #include "menu_numpad.h"
 #include "menu_numpad_buttons.h"
 
+#include <string.h>
 #include <avr/pgmspace.h>
 
 #include "color_theme.h"

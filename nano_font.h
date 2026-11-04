@@ -2,7 +2,7 @@
 #define _NANO_FONT
 
 #include <stdint.h>
-#include "PDQ_MinLib/gfxfont.h"
+#include <gfxfont.h>
 
 const GFXfont* font_regular();
 const GFXfont* font_small_titles();

@@ -93,7 +93,7 @@ void initSettings(){
 
 void initPorts(){
 
-  analogReference(DEFAULT);
+  analogReference(AR_DEFAULT);
 
   //??
   pinMode(PIN_ENC_A, INPUT_PULLUP);

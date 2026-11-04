@@ -1,5 +1,6 @@
 #include "menu_np_ql_shared.h"
 
+#include <string.h>
 #include <avr/pgmspace.h>
 
 #include "button.h"

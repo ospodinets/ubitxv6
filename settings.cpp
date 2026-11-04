@@ -99,8 +99,8 @@ void LoadSettingsFromEeprom()
   LoadSane(globalSettings.vfoA.frequency,EEPROM_ADDR_VFO_A_FREQ,SI5351_MIN_FREQUENCY_HZ,SI5351_MAX_FREQUENCY_HZ);
   LoadSane(globalSettings.vfoB.frequency,EEPROM_ADDR_VFO_B_FREQ,SI5351_MIN_FREQUENCY_HZ,SI5351_MAX_FREQUENCY_HZ);
   LoadSane(globalSettings.cwSideToneFreq,EEPROM_ADDR_CW_SIDETONE,100UL,2000UL);
-  LoadSane(globalSettings.cwDitDurationMs,EEPROM_ADDR_CW_DIT_TIME,10U,1000U);
-  if(LoadSane(globalSettings.cwActiveTimeoutMs,EEPROM_ADDR_CW_DELAYTIME,10U,100U)){
+  LoadSane(globalSettings.cwDitDurationMs,EEPROM_ADDR_CW_DIT_TIME,static_cast<uint16_t>(10),static_cast<uint16_t>(1000));
+  if(LoadSane(globalSettings.cwActiveTimeoutMs,EEPROM_ADDR_CW_DELAYTIME,static_cast<uint16_t>(10) ,static_cast<uint16_t>(100))){
     globalSettings.cwActiveTimeoutMs *= 10;//scale by 10 for legacy reasons
   }
   LoadSane(globalSettings.vfoA.mode,EEPROM_ADDR_VFO_A_MODE,VFO_MODE_LSB,VFO_MODE_USB);
@@ -108,7 +108,7 @@ void LoadSettingsFromEeprom()
   LoadSane(globalSettings.keyerMode,EEPROM_ADDR_CW_KEY_TYPE,KEYER_STRAIGHT,KEYER_IAMBIC_B);
 
   uint8_t morse_on = 0;
-  LoadSane(morse_on,EEPROM_ADDR_MORSE_MENU,(uint8_t)0,(uint8_t)1);
+  LoadSane(morse_on,EEPROM_ADDR_MORSE_MENU,static_cast<uint8_t>(0),static_cast<uint8_t>(1));
   globalSettings.morseMenuOn = morse_on;
 
   for(uint8_t i = 0; i < NUM_QUICKLIST_SETTINGS; ++i){

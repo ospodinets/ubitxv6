@@ -1,11 +1,11 @@
 #include "nano_font.h"
 #include <avr/pgmspace.h>
 
-#include "PDQ_MinLib/RobotoCondensed_Bold10pt7b.h"
-#include "PDQ_MinLib/B612Mono_Bold20pt7b_stripped.h"
-#include "PDQ_MinLib/B612Mono_Bold10pt7b_stripped.h"
-#include "PDQ_MinLib/Picopixel.h"
-#include "PDQ_MinLib/Icons.h"
+#include "Fonts/RobotoCondensed_Bold10pt7b.h"
+#include "Fonts/B612Mono_Bold20pt7b_stripped.h"
+#include "Fonts/B612Mono_Bold10pt7b_stripped.h"
+#include "Fonts/Picopixel.h"
+#include "Fonts/Icons.h"
 
 
 const GFXfont* font_regular()

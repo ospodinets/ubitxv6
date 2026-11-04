@@ -1,5 +1,6 @@
 #include "menu_utils.h"
 
+#include <string.h>
 #include <avr/pgmspace.h>
 
 #include "button.h"

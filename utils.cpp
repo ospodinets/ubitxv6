@@ -4,6 +4,7 @@
 #include <stdlib.h>//ultoa
 #include <string.h>//memset, strlen
 #include <WString.h>//F()
+#include <itoa.h>
 
 /*
  * Formats the frequency given

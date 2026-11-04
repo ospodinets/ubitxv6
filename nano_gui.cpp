@@ -15,13 +15,24 @@
 /*****************
  * Begin TFT functions
  *****************/
-#define ILI9341_CS_PIN PIN_TFT_CS
-#define ILI9341_DC_PIN PIN_TFT_DC
-#define	ILI9341_SAVE_SPCR (1) //Save state before/after to play nice with the touch screen
-#include "PDQ_MinLib/PDQ_ILI9341.h"
-PDQ_ILI9341 tft;
+#include <Adafruit_ILI9341.h>
 
-#include "nano_font.h"
+Adafruit_ILI9341 tft(PIN_TFT_CS, PIN_TFT_DC);
+
+static const GFXfont *activeFont = nullptr;
+static uint8_t activeTextSize = 1;
+
+static void setDisplayFont(const GFXfont *font)
+{
+  activeFont = font;
+  tft.setFont(font);
+}
+
+static void setDisplayTextSize(uint8_t size)
+{
+  activeTextSize = (size > 0) ? size : 1;
+  tft.setTextSize(activeTextSize);
+}
 
 const GFXfont* getFont(FontFamily_e fontFamily)
 {
@@ -53,10 +64,10 @@ void displayInit(void){
   digitalWrite(PIN_TFT_CS,HIGH);//Disable writing for now
 
   tft.begin();
-  tft.setFont(font_regular());
-  tft.setTextWrap(true);
+  setDisplayFont(font_regular());
+  tft.setTextWrap(false);
   tft.setTextColor(DISPLAY_GREEN,DISPLAY_BLACK);
-  tft.setTextSize(1);
+  setDisplayTextSize(1);
   tft.setRotation(1);
 }
 
@@ -73,7 +84,7 @@ void displayVline(unsigned int x, unsigned int y, unsigned int l, unsigned int c
 }
 
 void displayClear(unsigned int color){
-  tft.fillRect(0,0,320,240,color);
+  tft.fillRect(0,0,tft.width(),tft.height(),color);
 }
 
 void displayRect(unsigned int x,unsigned int y,unsigned int w,unsigned int h,unsigned int c){
@@ -88,20 +99,76 @@ void displayFillrect(unsigned int x,unsigned int y,unsigned int w,unsigned int h
 }
 
 void displayChar(int16_t x, int16_t y, unsigned char c, uint16_t color, uint16_t bg) {
-  tft.drawCharGFX(x,y,c,color,bg,1);
+  tft.drawChar(x,y,c,color,bg,1);
 }
 
 void displayRawText(const char *text, int x1, int y1, int w, int color, int background){
   tft.setTextColor(color,background);
-  tft.setCursor(x1,y1);
-  tft.setBound(x1,x1+w);
-  tft.print(text);
+  const int right = x1 + w;
+  int cursorX = x1;
+  int cursorY = y1;
+  bool lineOverflow = false;
+
+  while (*text != '\0') {
+    const unsigned char c = static_cast<unsigned char>(*text++);
+    if (c == '\r') {
+      continue;
+    }
+
+    if (c == '\n') {
+      cursorX = x1;
+      lineOverflow = false;
+      if (activeFont != nullptr) {
+        cursorY += activeTextSize * pgm_read_byte(&activeFont->yAdvance);
+      } else {
+        cursorY += activeTextSize * 8;
+      }
+      continue;
+    }
+
+    if (activeFont != nullptr) {
+      const uint16_t first = pgm_read_word(&activeFont->first);
+      const uint16_t last = pgm_read_word(&activeFont->last);
+      if (c < first || c > last) {
+        continue;
+      }
+
+      const GFXglyph *glyphs = static_cast<const GFXglyph *>(pgm_read_ptr(&activeFont->glyph));
+      const GFXglyph *glyph = &glyphs[c - first];
+      const uint8_t glyphWidth = pgm_read_byte(&glyph->width);
+      const uint8_t glyphHeight = pgm_read_byte(&glyph->height);
+      const int8_t xOffset = static_cast<int8_t>(pgm_read_byte(&glyph->xOffset));
+      const int8_t yOffset = static_cast<int8_t>(pgm_read_byte(&glyph->yOffset));
+      const int glyphLeft = cursorX + xOffset * activeTextSize;
+      const int glyphRight = glyphLeft + glyphWidth * activeTextSize;
+      const int glyphTop = cursorY + yOffset * activeTextSize;
+      const int glyphBottom = glyphTop + glyphHeight * activeTextSize;
+
+      if (!lineOverflow && glyphLeft >= x1 && glyphRight <= right &&
+          glyphTop >= 0 && glyphBottom <= tft.height()) {
+        tft.drawChar(cursorX, cursorY, c, color, background, activeTextSize);
+      } else if (glyphRight > right) {
+        lineOverflow = true;
+      }
+
+      cursorX += pgm_read_byte(&glyph->xAdvance) * activeTextSize;
+    } else {
+      const int glyphRight = cursorX + 6 * activeTextSize;
+      if (!lineOverflow && cursorX >= x1 && glyphRight <= right &&
+          cursorY >= 0 && cursorY + 8 * activeTextSize <= tft.height()) {
+        tft.drawChar(cursorX, cursorY, c, color, background, activeTextSize);
+      } else if (glyphRight > right) {
+        lineOverflow = true;
+      }
+      cursorX = glyphRight;
+    }
+  }
 }
 
 void displayText(const char *const text, int x1, int y1, int w, int h, const Style& style)
 {
-  tft.setFont(getFont(style.fontFamily));
-  tft.setTextSize(style.fontSize);
+  setDisplayFont(getFont(style.fontFamily));
+  setDisplayTextSize(style.fontSize);
   displayText(text, x1, y1, w, h, style.textColor, style.backgroundColor, style.borderColor, style.justification);
 }
 
@@ -116,7 +183,7 @@ void displayText(const char *const text, int x1, int y1, int w, int h, int color
   int16_t y1_out;
   uint16_t width_out;
   uint16_t height_out;
-  tft.getTextBounds(text, x1, y1, &x1_out, &y1_out, &width_out, &height_out, w);
+  tft.getTextBounds(text, x1, y1, &x1_out, &y1_out, &width_out, &height_out);
   if (TextJustification_e::Center == justification)
   {
     x1 += (w - ((int32_t)width_out + (x1_out - x1))) / 2;
@@ -130,8 +197,9 @@ void displayText(const char *const text, int x1, int y1, int w, int h, int color
     x1 += 2; // Give a little bit of padding from the border
   }
 
-  const GFXfont *font = tft.getFont();
-  const uint8_t yAdvance = pgm_read_byte(&font->yAdvance);
+  const uint8_t yAdvance = (activeFont != nullptr)
+    ? pgm_read_byte(&activeFont->yAdvance)
+    : 8;
   y1 += (yAdvance + h - static_cast<int32_t>(height_out)) / 2;
   displayRawText(text, x1, y1, w, color, background);
 }
@@ -145,11 +213,13 @@ void drawCross(int16_t x_center,int16_t y_center,uint16_t color)
 
 void setupTouch(){
   constexpr int16_t CROSS_CORNER_OFFSET = 20;
-  constexpr Point CROSS_CORNER_POINTS [] = {
+  const int16_t displayWidth = tft.width();
+  const int16_t displayHeight = tft.height();
+  const Point CROSS_CORNER_POINTS [] = {
     {CROSS_CORNER_OFFSET,CROSS_CORNER_OFFSET},//Top left
-    {PDQ_ILI9341::ILI9341_TFTHEIGHT-CROSS_CORNER_OFFSET,CROSS_CORNER_OFFSET},//Top right
-    {CROSS_CORNER_OFFSET, PDQ_ILI9341::ILI9341_TFTWIDTH-CROSS_CORNER_OFFSET},//Bottom left
-    {PDQ_ILI9341::ILI9341_TFTHEIGHT-CROSS_CORNER_OFFSET,PDQ_ILI9341::ILI9341_TFTWIDTH-CROSS_CORNER_OFFSET}//Bottom right
+    {static_cast<int16_t>(displayWidth-CROSS_CORNER_OFFSET),CROSS_CORNER_OFFSET},//Top right
+    {CROSS_CORNER_OFFSET, static_cast<int16_t>(displayHeight-CROSS_CORNER_OFFSET)},//Bottom left
+    {static_cast<int16_t>(displayWidth-CROSS_CORNER_OFFSET),static_cast<int16_t>(displayHeight-CROSS_CORNER_OFFSET)}//Bottom right
   };
   
   displayClear(DISPLAY_BLACK);
@@ -178,14 +248,14 @@ void setupTouch(){
 
   const int16_t diff_x_top = cal_points[1].x - cal_points[0].x;
   const int16_t diff_x_bottom = cal_points[3].x - cal_points[2].x;
-  constexpr int32_t diff_x_target = CROSS_CORNER_POINTS[1].x - CROSS_CORNER_POINTS[0].x;
+  const int32_t diff_x_target = CROSS_CORNER_POINTS[1].x - CROSS_CORNER_POINTS[0].x;
 
   //Average the measured differences
   globalSettings.touchSlopeX = SCALE_SENSITIVITY_MULTIPLIER*(diff_x_top + diff_x_bottom) / (2*diff_x_target);
 
   const int16_t diff_y_left = cal_points[2].y - cal_points[0].y;
   const int16_t diff_y_right = cal_points[3].y - cal_points[1].y;
-  constexpr int32_t diff_y_target = CROSS_CORNER_POINTS[2].y - CROSS_CORNER_POINTS[0].y;
+  const int32_t diff_y_target = CROSS_CORNER_POINTS[2].y - CROSS_CORNER_POINTS[0].y;
 
   //Average the measured differences
   globalSettings.touchSlopeY = SCALE_SENSITIVITY_MULTIPLIER*(diff_y_left + diff_y_right) / (2*diff_y_target);
@@ -208,5 +278,3 @@ void setupTouch(){
 
   SaveSettingsToEeprom();
 }
-
-
