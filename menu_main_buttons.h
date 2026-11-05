@@ -16,4 +16,5 @@ void drawTx();
 void drawVersion();
 void drawCallsign();
 void drawVfo();
+void invalidateVfo();
 void drawBand();

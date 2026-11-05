@@ -147,6 +147,11 @@ void drawVfo()
   lVfoMain.draw();
 }
 
+void invalidateVfo()
+{
+  lVfoMain.invalidate();
+}
+
 Style styleBand = {
     COLOR_INACTIVE_TEXT,
     COLOR_INACTIVE_BACKGROUND,

@@ -53,6 +53,89 @@ const GFXfont* getFont(FontFamily_e fontFamily)
   }
 }
 
+struct TextPlacement
+{
+  int cursorX;
+  int cursorY;
+};
+
+static TextPlacement getTextPlacement(const char *text, int x, int y, int w, int h,
+                                     TextJustification_e justification)
+{
+  int16_t boundsX;
+  int16_t boundsY;
+  uint16_t boundsWidth;
+  uint16_t boundsHeight;
+  tft.getTextBounds(text, x, y, &boundsX, &boundsY, &boundsWidth, &boundsHeight);
+
+  if (TextJustification_e::Center == justification)
+  {
+    x += (w - ((int32_t)boundsWidth + (boundsX - x))) / 2;
+  }
+  else if (TextJustification_e::Right == justification)
+  {
+    x += w - ((int32_t)boundsWidth + (boundsX - x));
+  }
+  else
+  {
+    x += 2;
+  }
+
+  const uint8_t yAdvance = (activeFont != nullptr)
+    ? pgm_read_byte(&activeFont->yAdvance)
+    : 8;
+  y += (yAdvance + h - static_cast<int32_t>(boundsHeight)) / 2;
+  return {x, y};
+}
+
+static void drawCustomGlyph(const GFXglyph *glyph, int x, int y, uint16_t color)
+{
+  const uint8_t glyphWidth = pgm_read_byte(&glyph->width);
+  const uint8_t glyphHeight = pgm_read_byte(&glyph->height);
+  const int8_t xOffset = static_cast<int8_t>(pgm_read_byte(&glyph->xOffset));
+  const int8_t yOffset = static_cast<int8_t>(pgm_read_byte(&glyph->yOffset));
+  uint16_t bitmapOffset = pgm_read_word(&glyph->bitmapOffset);
+  const uint8_t *bitmap = static_cast<const uint8_t *>(pgm_read_ptr(&activeFont->bitmap));
+  uint8_t bits = 0;
+  uint8_t bit = 0;
+
+  for (uint8_t row = 0; row < glyphHeight; ++row) {
+    int8_t runStart = -1;
+    for (uint8_t column = 0; column < glyphWidth; ++column) {
+      if (!(bit++ & 7)) {
+        bits = pgm_read_byte(&bitmap[bitmapOffset++]);
+      }
+      const bool pixelSet = (bits & 0x80) != 0;
+      bits <<= 1;
+      if (pixelSet) {
+        if (runStart < 0) {
+          runStart = column;
+        }
+      } else if (runStart >= 0) {
+        const int runX = x + (xOffset + runStart) * activeTextSize;
+        const int runY = y + (yOffset + row) * activeTextSize;
+        const int runWidth = (column - runStart) * activeTextSize;
+        if (activeTextSize == 1) {
+          tft.writeFastHLine(runX, runY, runWidth, color);
+        } else {
+          tft.writeFillRect(runX, runY, runWidth, activeTextSize, color);
+        }
+        runStart = -1;
+      }
+    }
+    if (runStart >= 0) {
+      const int runX = x + (xOffset + runStart) * activeTextSize;
+      const int runY = y + (yOffset + row) * activeTextSize;
+      const int runWidth = (glyphWidth - runStart) * activeTextSize;
+      if (activeTextSize == 1) {
+        tft.writeFastHLine(runX, runY, runWidth, color);
+      } else {
+        tft.writeFillRect(runX, runY, runWidth, activeTextSize, color);
+      }
+    }
+  }
+}
+
 
 void displayInit(void){
   //Pulling this low 6 times should exit deep sleep mode
@@ -63,7 +146,7 @@ void displayInit(void){
   }
   digitalWrite(PIN_TFT_CS,HIGH);//Disable writing for now
 
-  tft.begin();
+  tft.begin(40000000);
   setDisplayFont(font_regular());
   tft.setTextWrap(false);
   tft.setTextColor(DISPLAY_GREEN,DISPLAY_BLACK);
@@ -108,6 +191,10 @@ void displayRawText(const char *text, int x1, int y1, int w, int color, int back
   int cursorX = x1;
   int cursorY = y1;
   bool lineOverflow = false;
+  const bool batchWrite = activeFont != nullptr;
+  if (batchWrite) {
+    tft.startWrite();
+  }
 
   while (*text != '\0') {
     const unsigned char c = static_cast<unsigned char>(*text++);
@@ -146,7 +233,7 @@ void displayRawText(const char *text, int x1, int y1, int w, int color, int back
 
       if (!lineOverflow && glyphLeft >= x1 && glyphRight <= right &&
           glyphTop >= 0 && glyphBottom <= tft.height()) {
-        tft.drawChar(cursorX, cursorY, c, color, background, activeTextSize);
+        drawCustomGlyph(glyph, cursorX, cursorY, color);
       } else if (glyphRight > right) {
         lineOverflow = true;
       }
@@ -162,6 +249,9 @@ void displayRawText(const char *text, int x1, int y1, int w, int color, int back
       }
       cursorX = glyphRight;
     }
+  }
+  if (batchWrite) {
+    tft.endWrite();
   }
 }
 
@@ -179,29 +269,169 @@ void displayText(const char *const text, int x1, int y1, int w, int h, int color
   displayFillrect(x1, y1, w, h, background);
   displayRect(x1, y1, w, h, border);
 
-  int16_t x1_out;
-  int16_t y1_out;
-  uint16_t width_out;
-  uint16_t height_out;
-  tft.getTextBounds(text, x1, y1, &x1_out, &y1_out, &width_out, &height_out);
-  if (TextJustification_e::Center == justification)
-  {
-    x1 += (w - ((int32_t)width_out + (x1_out - x1))) / 2;
+  const TextPlacement placement = getTextPlacement(text, x1, y1, w, h, justification);
+  displayRawText(text, placement.cursorX, placement.cursorY, w, color, background);
+}
+
+bool displayTextUpdate(const char *previousText, const char *text, int x, int y,
+                       int w, int h, const Style& style)
+{
+  setDisplayFont(getFont(style.fontFamily));
+  setDisplayTextSize(style.fontSize);
+
+  if (previousText == nullptr || text == nullptr) {
+    return false;
   }
-  else if (TextJustification_e::Right == justification)
-  {
-    x1 += w - ((int32_t)width_out + (x1_out - x1));
+  if (strcmp(previousText, text) == 0) {
+    return true;
   }
-  else
-  {
-    x1 += 2; // Give a little bit of padding from the border
+  if (activeFont == nullptr || strchr(previousText, '\n') != nullptr ||
+      strchr(previousText, '\r') != nullptr || strchr(text, '\n') != nullptr ||
+      strchr(text, '\r') != nullptr || activeTextSize != 1) {
+    return false;
   }
 
-  const uint8_t yAdvance = (activeFont != nullptr)
-    ? pgm_read_byte(&activeFont->yAdvance)
-    : 8;
-  y1 += (yAdvance + h - static_cast<int32_t>(height_out)) / 2;
-  displayRawText(text, x1, y1, w, color, background);
+  struct GlyphPlacement
+  {
+    unsigned char character;
+    int16_t x;
+    int16_t y;
+    uint8_t width;
+    uint8_t height;
+  };
+  constexpr size_t MAX_GLYPHS = 30;
+  GlyphPlacement oldGlyphs[MAX_GLYPHS];
+  GlyphPlacement newGlyphs[MAX_GLYPHS];
+  size_t oldCount = 0;
+  size_t newCount = 0;
+
+  const uint16_t first = pgm_read_word(&activeFont->first);
+  const uint16_t last = pgm_read_word(&activeFont->last);
+  const GFXglyph *glyphs =
+    static_cast<const GFXglyph *>(pgm_read_ptr(&activeFont->glyph));
+
+  auto collectGlyphs = [&](const char *value, GlyphPlacement *placements,
+                           size_t& count) -> bool {
+    if (strlen(value) >= MAX_GLYPHS) {
+      return false;
+    }
+
+    const TextPlacement placement =
+      getTextPlacement(value, x, y, w, h, style.justification);
+    int cursorX = placement.cursorX;
+    for (size_t i = 0; value[i] != '\0'; ++i) {
+      const unsigned char character = static_cast<unsigned char>(value[i]);
+      if (character < first || character > last) {
+        return false;
+      }
+
+      const GFXglyph *glyph = &glyphs[character - first];
+      const uint8_t glyphWidth = pgm_read_byte(&glyph->width);
+      const uint8_t glyphHeight = pgm_read_byte(&glyph->height);
+      const int8_t xOffset = static_cast<int8_t>(pgm_read_byte(&glyph->xOffset));
+      const int8_t yOffset = static_cast<int8_t>(pgm_read_byte(&glyph->yOffset));
+      const int glyphX = cursorX + xOffset;
+      const int glyphY = placement.cursorY + yOffset;
+      const int minX = style.borderColor == style.backgroundColor ? x : x + 1;
+      const int minY = style.borderColor == style.backgroundColor ? y : y + 1;
+      const int maxX = style.borderColor == style.backgroundColor ? x + w : x + w - 1;
+      const int maxY = style.borderColor == style.backgroundColor ? y + h : y + h - 1;
+      if (glyphWidth == 0 || glyphHeight == 0 ||
+          glyphX < minX || glyphX + glyphWidth > maxX ||
+          glyphY < minY || glyphY + glyphHeight > maxY ||
+          glyphX < 0 || glyphY < 0 ||
+          glyphX + glyphWidth > tft.width() ||
+          glyphY + glyphHeight > tft.height()) {
+        return false;
+      }
+
+      placements[count++] = {
+        character,
+        static_cast<int16_t>(glyphX),
+        static_cast<int16_t>(glyphY),
+        glyphWidth,
+        glyphHeight
+      };
+      cursorX += pgm_read_byte(&glyph->xAdvance);
+    }
+    return true;
+  };
+
+  if (!collectGlyphs(previousText, oldGlyphs, oldCount) ||
+      !collectGlyphs(text, newGlyphs, newCount)) {
+    return false;
+  }
+
+  auto sameGlyphAtPosition = [](const GlyphPlacement& glyph,
+                                const GlyphPlacement *others,
+                                size_t otherCount) {
+    for (size_t i = 0; i < otherCount; ++i) {
+      if (glyph.character == others[i].character &&
+          glyph.x == others[i].x && glyph.y == others[i].y) {
+        return true;
+      }
+    }
+    return false;
+  };
+  auto intersects = [](const GlyphPlacement& a, const GlyphPlacement& b) {
+    return a.x < b.x + b.width && b.x < a.x + a.width &&
+           a.y < b.y + b.height && b.y < a.y + a.height;
+  };
+
+  bool hasChanges = false;
+  for (size_t i = 0; i < oldCount; ++i) {
+    hasChanges |= !sameGlyphAtPosition(oldGlyphs[i], newGlyphs, newCount);
+  }
+  for (size_t i = 0; i < newCount; ++i) {
+    hasChanges |= !sameGlyphAtPosition(newGlyphs[i], oldGlyphs, oldCount);
+  }
+  if (!hasChanges) {
+    return true;
+  }
+
+  tft.startWrite();
+  for (size_t i = 0; i < oldCount; ++i) {
+    if (!sameGlyphAtPosition(oldGlyphs[i], newGlyphs, newCount)) {
+      tft.writeFillRect(oldGlyphs[i].x, oldGlyphs[i].y,
+                        oldGlyphs[i].width, oldGlyphs[i].height,
+                        style.backgroundColor);
+    }
+  }
+  for (size_t i = 0; i < newCount; ++i) {
+    if (!sameGlyphAtPosition(newGlyphs[i], oldGlyphs, oldCount)) {
+      tft.writeFillRect(newGlyphs[i].x, newGlyphs[i].y,
+                        newGlyphs[i].width, newGlyphs[i].height,
+                        style.backgroundColor);
+    }
+  }
+
+  for (size_t i = 0; i < newCount; ++i) {
+    bool redraw = !sameGlyphAtPosition(newGlyphs[i], oldGlyphs, oldCount);
+    if (!redraw) {
+      for (size_t j = 0; j < oldCount && !redraw; ++j) {
+        if (!sameGlyphAtPosition(oldGlyphs[j], newGlyphs, newCount) &&
+            intersects(newGlyphs[i], oldGlyphs[j])) {
+          redraw = true;
+        }
+      }
+      for (size_t j = 0; j < newCount && !redraw; ++j) {
+        if (!sameGlyphAtPosition(newGlyphs[j], oldGlyphs, oldCount) &&
+            intersects(newGlyphs[i], newGlyphs[j])) {
+          redraw = true;
+        }
+      }
+    }
+    if (redraw) {
+      const GFXglyph *glyph = &glyphs[newGlyphs[i].character - first];
+      drawCustomGlyph(glyph, newGlyphs[i].x -
+                      static_cast<int8_t>(pgm_read_byte(&glyph->xOffset)),
+                      newGlyphs[i].y -
+                      static_cast<int8_t>(pgm_read_byte(&glyph->yOffset)),
+                      style.textColor);
+    }
+  }
+  tft.endWrite();
+  return true;
 }
 
 void drawCross(int16_t x_center,int16_t y_center,uint16_t color)
@@ -229,13 +459,20 @@ void setupTouch(){
   Point cal_points[sizeof(CROSS_CORNER_POINTS)/sizeof(CROSS_CORNER_POINTS[0])];
 
   for(uint8_t i = 0; i < sizeof(CROSS_CORNER_POINTS)/sizeof(CROSS_CORNER_POINTS[0]); ++i){
+    Serial.print(F("TOUCH: calibration point "));
+    Serial.println(i + 1);
     drawCross(CROSS_CORNER_POINTS[i].x,CROSS_CORNER_POINTS[i].y,DISPLAY_WHITE);
     while(!readTouch(&cal_points[i])){
       if(ButtonPress_e::NotPressed != CheckTunerButton()){
+        Serial.println(F("TOUCH: calibration cancelled"));
         return;
       }
       delay(100);
     }
+    Serial.print(F("TOUCH: calibration raw x="));
+    Serial.print(cal_points[i].x);
+    Serial.print(F(" y="));
+    Serial.println(cal_points[i].y);
     while(readTouch(&cal_points[i])){
       delay(100);
     }
@@ -263,18 +500,14 @@ void setupTouch(){
   globalSettings.touchOffsetX = cal_points[0].x - ((CROSS_CORNER_OFFSET * globalSettings.touchSlopeX)/SCALE_SENSITIVITY_MULTIPLIER);
   globalSettings.touchOffsetY = cal_points[0].y - ((CROSS_CORNER_OFFSET * globalSettings.touchSlopeY)/SCALE_SENSITIVITY_MULTIPLIER);
 
-
-/*
-  for(uint8_t i = 0; i < sizeof(cal_points)/sizeof(cal_points[0]); ++i){
-    Serial.print(cal_points[i].x);Serial.print(':');Serial.println(cal_points[i].y);
-  }
-  
-  //for debugging
-  Serial.print(globalSettings.touchSlopeX); Serial.print(' ');
-  Serial.print(globalSettings.touchSlopeY); Serial.print(' ');
-  Serial.print(globalSettings.touchOffsetX); Serial.print(' ');
-  Serial.println(globalSettings.touchOffsetY); Serial.println(' ');
-*/
+  Serial.print(F("TOUCH: calibration slope x="));
+  Serial.print(globalSettings.touchSlopeX);
+  Serial.print(F(" y="));
+  Serial.print(globalSettings.touchSlopeY);
+  Serial.print(F(" offset x="));
+  Serial.print(globalSettings.touchOffsetX);
+  Serial.print(F(" y="));
+  Serial.println(globalSettings.touchOffsetY);
 
   SaveSettingsToEeprom();
 }

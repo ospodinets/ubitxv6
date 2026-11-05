@@ -32,6 +32,7 @@ int16_t mainMenuSelectedItemRaw = 0;//Allow negative only for easier checks on w
 void drawMainMenu(void)
 {
   displayClear(COLOR_BACKGROUND);
+  invalidateVfo();
   for(uint8_t i = 0; i < MAIN_MENU_NUM_BUTTONS; ++i){
     drawButton(mainMenuButtons[i]);
   }
