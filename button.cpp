@@ -2,9 +2,8 @@
 
 #include "color_theme.h"
 #include "nano_gui.h"
-#include "scratch_space.h"
 
-Style defaultInactiveStyle = {
+static Style defaultInactiveStyle = {
     COLOR_INACTIVE_TEXT,
     COLOR_INACTIVE_BACKGROUND,
     COLOR_INACTIVE_BORDER,
@@ -13,7 +12,7 @@ Style defaultInactiveStyle = {
     1
   };
 
-Style defaultActiveStyle = {
+static Style defaultActiveStyle = {
     COLOR_ACTIVE_TEXT,
     COLOR_ACTIVE_BACKGROUND,
     COLOR_ACTIVE_BORDER,
@@ -22,38 +21,28 @@ Style defaultActiveStyle = {
     1
   };
 
+Button::Button(int16_t x, int16_t y, int16_t w, int16_t h,
+               const char* text, LabelTextOverride_t text_override,
+               ButtonStatusCallback_t status, ButtonClickHandler_t on_select,
+               char morse, Style* inactiveStyle, Style* activeStyle)
+    : Label(x, y, w, h, text, text_override, nullptr),
+      m_status(status), m_on_select(on_select), m_morse(morse),
+      m_inactiveStyle(inactiveStyle), m_activeStyle(activeStyle)
+{
+}
+
+void Button::draw() const
+{
+  Style* style = m_inactiveStyle ? m_inactiveStyle : &defaultInactiveStyle;
+  if (getStatus() == ButtonStatus_e::Active) {
+    style = m_activeStyle ? m_activeStyle : &defaultActiveStyle;
+  }
+  drawWithStyle(style);
+}
+
 void drawButton(const Button* button)
 {
-  Style* style = button->inactiveStyle ? button->inactiveStyle : &defaultInactiveStyle;
-  switch(button->status())
-  {
-    case ButtonStatus_e::Stateless://Fallthrough intended
-    case ButtonStatus_e::Inactive://Fallthrough intended
-    default:
-    {
-      //Colors are initialized for this, so we're done
-      break;
-    }
-    case ButtonStatus_e::Active:
-    {
-      style = button->activeStyle ? button->activeStyle : &defaultActiveStyle;
-      break;
-    }
-  }
-
-
-  if(nullptr != button->text){
-    displayText(button->text, button->x, button->y, button->w, button->h, *style);
-  }
-  else if(nullptr != button->text_override){
-    char text[30] = {0};
-    button->text_override(text,sizeof(text));
-    text[sizeof(text) - 1] = '\0';
-    displayText(text, button->x, button->y, button->w, button->h, *style);
-  }
-  else{
-    //Something's messed up
-    //Serial.println(F("No text for button!"));
-    return;
+  if (button != nullptr) {
+    button->draw();
   }
 }

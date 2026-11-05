@@ -12,10 +12,10 @@ const Button* findPressedButton(const Button* const* buttons,
 {
   for(uint16_t i = 0; i < num_buttons; ++i){
     const Button* button = buttons[i];
-    if((button->x <= touch_point.x)
-     &&(touch_point.x <= button->x + button->w)
-     &&(button->y <= touch_point.y)
-     &&(touch_point.y <= button->y + button->h)){
+    if((button->x() <= touch_point.x)
+     &&(touch_point.x <= button->x() + button->width())
+     &&(button->y() <= touch_point.y)
+     &&(touch_point.y <= button->y() + button->height())){
        return button;
      }
   }
@@ -27,10 +27,10 @@ void movePuck(const Button *const b_old,
               const Button *const b_new)
 {
   if(nullptr != b_old){
-    displayRect(b_old->x,b_old->y,b_old->w,b_old->h,COLOR_INACTIVE_BORDER);
+    displayRect(b_old->x(),b_old->y(),b_old->width(),b_old->height(),COLOR_INACTIVE_BORDER);
   }
   if(nullptr != b_new){
-    displayRect(b_new->x,b_new->y,b_new->w,b_new->h,COLOR_ACTIVE_BORDER);
+    displayRect(b_new->x(),b_new->y(),b_new->width(),b_new->height(),COLOR_ACTIVE_BORDER);
   }
 }
 
@@ -38,13 +38,13 @@ void playButtonMorse(const Button *const button,
                      const MorsePlaybackType_e play_type)
 {
   if(MorsePlaybackType_e::PlayText == play_type){
-    morseText(button->text);
+    morseText(button->staticText());
   }
   else{
-    morseLetter(button->morse);
+    morseLetter(button->morse());
   }
 
-  const ButtonStatus_e bs = button->status();
+  const ButtonStatus_e bs = button->getStatus();
   if(ButtonStatus_e::Inactive == bs){
     morseBool(false);
   }

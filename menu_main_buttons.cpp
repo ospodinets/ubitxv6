@@ -189,7 +189,7 @@ ButtonStatus_e bsIgnore();
 void toSSB(char* text_out, const uint16_t max_text_size);
 ButtonStatus_e bsSSB();
 void osSSB();
-constexpr Button bSSB = {
+static Button bSSB = {
   LAYOUT_SSB_X,
   LAYOUT_SSB_Y,
   LAYOUT_SSB_WIDTH,
@@ -215,7 +215,7 @@ Style styleVfoSec = {
 void toVfoSec(char* text_out, const uint16_t max_text_size);
 ButtonStatus_e bsVfoSec();
 void osVfoSec();
-constexpr Button bVfoSec = {
+static Button bVfoSec = {
   LAYOUT_VFO_SEC_X,
   LAYOUT_VFO_SEC_Y,
   LAYOUT_VFO_SEC_WIDTH,
@@ -232,7 +232,7 @@ constexpr Button bVfoSec = {
 constexpr char txtSpl [] PROGMEM = "SPL";
 ButtonStatus_e bsSpl();
 void osSpl();
-constexpr Button bSpl = {
+Button bSpl = {
   LAYOUT_BUTTON_X,
   LAYOUT_BUTTON_Y,
   LAYOUT_BUTTON_WIDTH,
@@ -247,7 +247,7 @@ constexpr Button bSpl = {
 constexpr char txtRit [] PROGMEM = "RIT";
 ButtonStatus_e bsRit();
 void osRit();
-constexpr Button bRit = {
+Button bRit = {
   LAYOUT_BUTTON_X + LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -262,7 +262,7 @@ constexpr Button bRit = {
 constexpr char txtCw [] PROGMEM = "CW";
 ButtonStatus_e bsCw();
 void osCw();
-constexpr Button bCw = {
+Button bCw = {
   LAYOUT_BUTTON_X + 2*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -277,7 +277,7 @@ constexpr Button bCw = {
 constexpr char txtUp [] PROGMEM = "UP";
 ButtonStatus_e bsUp();
 void osUp();
-constexpr Button bUp = {
+static Button bUp = {
   LAYOUT_BUTTON_X + 3*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -292,7 +292,7 @@ constexpr Button bUp = {
 constexpr char txtDown [] PROGMEM = "DN";
 ButtonStatus_e bsDown();
 void osDown();
-constexpr Button bDown = {
+static Button bDown = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -324,7 +324,7 @@ Style styleIconicInactive = {
 
 constexpr char txtQuickList [] PROGMEM = "\x01";//star icon
 void osQuickList();
-constexpr Button bQuickList = {
+static Button bQuickList = {
   LAYOUT_BUTTON_X + 2*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 1*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -341,7 +341,7 @@ constexpr Button bQuickList = {
 constexpr char txtMenu [] PROGMEM = "\x02";//gear icon
 ButtonStatus_e bsIgnore();
 void osMenu();
-constexpr Button bMenu = {
+static Button bMenu = {
   LAYOUT_BUTTON_X + 3*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 1*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -358,7 +358,7 @@ constexpr Button bMenu = {
 constexpr char txtNumpad [] PROGMEM = "\x03";//numpad icon
 ButtonStatus_e bsIgnore();
 void osNumpad();
-constexpr Button bNumpad = {
+static Button bNumpad = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_HPITCH,
   LAYOUT_BUTTON_Y + 1*LAYOUT_BUTTON_VPITCH,
   LAYOUT_BUTTON_WIDTH,
@@ -399,29 +399,27 @@ void toVfoSec(char *text_out, const uint16_t max_text_size)
   // Normal operation
   if (globalSettings.splitOn || globalSettings.ritOn)
   {
-    text_out[0] = 'T';
-    text_out[1] = ':';
-    text_out[2] = ' ';
+    text_out[0] = ';';
+    text_out[1] = ' ';
   }
   else
   {
     text_out[0] = ' ';
     text_out[1] = ' ';
-    text_out[2] = ' ';
   }
 
   // if rit is active the rit frequesncy is a transmit frequency
   if (globalSettings.ritOn)
   {
-    formatFreq(globalSettings.ritFrequency, text_out + 3, max_text_size - 3, 10);
+    formatFreq(globalSettings.ritFrequency, text_out + 2, max_text_size - 3, 10);
   }
   else if (globalSettings.activeVfo == VFO_A)
   {
-    formatFreq(globalSettings.vfoB.frequency, text_out + 3, max_text_size - 3, 10);
+    formatFreq(globalSettings.vfoB.frequency, text_out + 2, max_text_size - 3, 10);
   }
   else if (globalSettings.activeVfo == VFO_B)
   {
-    formatFreq(globalSettings.vfoA.frequency, text_out + 3, max_text_size - 3, 10);
+    formatFreq(globalSettings.vfoA.frequency, text_out + 2, max_text_size - 3, 10);
   }
   else
   {

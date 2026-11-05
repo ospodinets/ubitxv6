@@ -7,9 +7,9 @@
 extern const Button* const mainMenuButtons[];
 extern const uint8_t MAIN_MENU_NUM_BUTTONS;
 
-extern const Button bRit;
-extern const Button bCw;
-extern const Button bSpl;
+extern Button bRit;
+extern Button bCw;
+extern Button bSpl;
 
 void updateSidebandButton();
 void drawTx();

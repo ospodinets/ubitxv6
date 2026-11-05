@@ -16,35 +16,43 @@ Style defaultLabelStyle = {
 Label::Label(int16_t x, int16_t y, int16_t w, int16_t h, const char *text,
              LabelTextOverride_t text_override, Style *style)
     : m_x(x), m_y(y), m_w(w), m_h(h), m_text(text), m_text_override(text_override), 
-      m_style(style), m_dirty(true), m_has_drawn_text(false)
+      m_style(style), m_dirty(true), m_has_drawn_text(false),
+      m_last_display_generation(0)
 {
 }
 
 void Label::setText(const char *text)
 {
-      m_text = text;
-      m_text_override = nullptr;
+    m_text = text;
+    m_text_override = nullptr;
+    m_dirty = true;
 }
 
 void Label::setTextOverride(LabelTextOverride_t text_override)
 {
-      m_text = nullptr;
-      m_text_override = text_override;
+    m_text = nullptr;
+    m_text_override = text_override;
+    m_dirty = true;
 }
 
 void Label::setStyle(Style *style)
 {
-      m_style = style;
+    m_style = style;
+    m_dirty = true;
 }
 
-void Label::invalidate()
+void Label::invalidate() const
 {
-      m_dirty = true;
+    m_dirty = true;
 }
 
 void Label::draw()
 {
-    Style *style = m_style ? m_style : &defaultLabelStyle;
+    drawWithStyle(m_style ? m_style : &defaultLabelStyle);
+}
+
+void Label::drawWithStyle(Style *style) const
+{
     char textBuffer[sizeof(m_last_drawn_text)] = {};
     const char *text = m_text;
 
@@ -65,7 +73,10 @@ void Label::draw()
       m_last_style.justification != style->justification ||
       m_last_style.fontFamily != style->fontFamily ||
       m_last_style.fontSize != style->fontSize;
-    const bool forceRedraw = m_dirty || !m_has_drawn_text || styleChanged || !cacheable;
+    const uint32_t currentDisplayGeneration = displayGeneration();
+    const bool forceRedraw =
+      m_dirty || !m_has_drawn_text || styleChanged || !cacheable ||
+      m_last_display_generation != currentDisplayGeneration;
 
     if (!forceRedraw && strcmp(m_last_drawn_text, text) == 0) {
       return;
@@ -84,4 +95,5 @@ void Label::draw()
     }
     m_last_style = *style;
     m_dirty = false;
+    m_last_display_generation = currentDisplayGeneration;
 }

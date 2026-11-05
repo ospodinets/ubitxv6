@@ -16,14 +16,14 @@ MenuReturn_e runNpQlShared(const ButtonPress_e tuner_button,
     uint8_t menu_index = *menuSelectedItemRaw/MENU_KNOB_COUNTS_PER_ITEM;
     const Button* button = menu_buttons[menu_index];
     *selection_mode = tuner_button;
-    button->on_select();
+    button->select();
   }//tuner_button
 
   else if(ButtonPress_e::NotPressed != touch_button){
     const Button* button = findPressedButton(menu_buttons,menu_num_buttons,touch_point);
     if(nullptr != button){
       *selection_mode = touch_button;
-      button->on_select();
+      button->select();
     }
     else{
       //Touch detected, but not on our buttons, so ignore

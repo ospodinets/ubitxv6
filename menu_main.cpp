@@ -122,7 +122,7 @@ MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
           uint8_t menu_index = mainMenuSelectedItemRaw/MENU_KNOB_COUNTS_PER_ITEM;
           const Button* button = mainMenuButtons[menu_index];
           endSelector(button);
-          button->on_select();
+          button->select();
         }
         else{
           initSelector(&mainMenuSelectedItemRaw,
@@ -158,7 +158,7 @@ MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
     //We treat long and short presses the same, so no need to have a switch
     const Button* button = findPressedButton(mainMenuButtons,MAIN_MENU_NUM_BUTTONS,touch_point);
     if(nullptr != button){
-      button->on_select();
+      button->select();
     }
     else{
       //Touch detected, but not on our buttons, so ignore

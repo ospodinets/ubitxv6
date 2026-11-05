@@ -18,6 +18,7 @@
 #include <Adafruit_ILI9341.h>
 
 Adafruit_ILI9341 tft(PIN_TFT_CS, PIN_TFT_DC);
+static uint32_t displayGenerationCount = 0;
 
 static const GFXfont *activeFont = nullptr;
 static uint8_t activeTextSize = 1;
@@ -167,7 +168,13 @@ void displayVline(unsigned int x, unsigned int y, unsigned int l, unsigned int c
 }
 
 void displayClear(unsigned int color){
+  ++displayGenerationCount;
   tft.fillRect(0,0,tft.width(),tft.height(),color);
+}
+
+uint32_t displayGeneration()
+{
+  return displayGenerationCount;
 }
 
 void displayRect(unsigned int x,unsigned int y,unsigned int w,unsigned int h,unsigned int c){
@@ -322,7 +329,7 @@ bool displayTextUpdate(const char *previousText, const char *text, int x, int y,
     for (size_t i = 0; value[i] != '\0'; ++i) {
       const unsigned char character = static_cast<unsigned char>(value[i]);
       if (character < first || character > last) {
-        return false;
+        continue;
       }
 
       const GFXglyph *glyph = &glyphs[character - first];

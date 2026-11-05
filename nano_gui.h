@@ -29,6 +29,7 @@ struct Style
 
 void displayInit();
 void displayClear(unsigned int color);
+uint32_t displayGeneration();
 void displayPixel(unsigned int x, unsigned int y, unsigned int c);
 void displayHline(unsigned int x, unsigned int y, unsigned int l, unsigned int c);
 void displayVline(unsigned int x, unsigned int y, unsigned int l, unsigned int c);

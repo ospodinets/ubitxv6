@@ -23,7 +23,7 @@ ButtonPress_e quickListSelectionMode;
 #define QUICKLIST_BUTTON_GENERATE(number) \
           void toQL##number(char* text_out, const uint16_t max_text_size);\
           void osQL##number();\
-          constexpr Button bQL##number = {\
+          static Button bQL##number = {\
             LAYOUT_BUTTON_X,\
             LAYOUT_BUTTON_Y + number*LAYOUT_BUTTON_PITCH_Y,\
             LAYOUT_BUTTON_WIDTH,\
@@ -47,7 +47,7 @@ QUICKLIST_BUTTON_GENERATE(3);
 
 constexpr char txtQLCancel [] PROGMEM = "Can";
 void osQLCancel();
-constexpr Button bQLCancel = {
+static Button bQLCancel = {
   LAYOUT_BUTTON_X,
   LAYOUT_BUTTON_Y + 4*LAYOUT_BUTTON_PITCH_Y,
   LAYOUT_BUTTON_WIDTH,
