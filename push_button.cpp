@@ -14,10 +14,6 @@ ButtonPress_e CheckTunerButton(){
   if (!IsButtonPressed()){
     return ButtonPress_e::NotPressed;
   }
-  delay(DEBOUNCE_DELAY_MS);
-  if (!IsButtonPressed()){//debounce
-    return ButtonPress_e::NotPressed;
-  }
 
   uint16_t down_time = 0;
   while(IsButtonPressed() && (down_time < LONG_PRESS_TIME_MS)){

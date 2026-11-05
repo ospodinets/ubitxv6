@@ -40,7 +40,7 @@ void drawMainMenu(void)
   drawVfo();
   drawVersion();
   drawCallsign();
-
+  drawBand();
   ltoa(GetActiveVfoFreq(),b,10);
   morseText(b);
 }

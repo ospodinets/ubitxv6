@@ -76,6 +76,7 @@ static const unsigned int LAYOUT_VERSION_TEXT_Y = DISPLAY_HEIGHT - 6;
 static const unsigned int LAYOUT_VERSION_TEXT_WIDTH = DISPLAY_WIDTH/2;
 static const unsigned int LAYOUT_VERSION_TEXT_HEIGHT = 6;
 
+
 void drawTx()
 {
   if(globalSettings.txActive){
@@ -160,11 +161,21 @@ Style styleBand = {
     FontFamily_e::SmallTitles,
     1
   };
+
+void toBand(char* text_out, const uint16_t max_text_size);
+Label lBand(
+  LAYOUT_BAND_X,
+  LAYOUT_BAND_Y,
+  LAYOUT_BAND_WIDTH,
+  LAYOUT_BAND_HEIGHT,
+  nullptr,
+  toBand,
+  &styleBand
+);
+
 void drawBand()
 {
-  getBandString(GetActiveVfoFreq(), b, sizeof(b));
-  displayText(b, LAYOUT_BAND_X, LAYOUT_BAND_Y, LAYOUT_BAND_WIDTH, LAYOUT_BAND_HEIGHT,
-              styleBand);
+  lBand.draw();
 }
 
 Style styleSSBactive = {
@@ -507,6 +518,24 @@ void toVfoMain(char* text_out, const uint16_t max_text_size)
       *c = ':';
     }
   }
+}
+
+void toBand(char* text_out, const uint16_t max_text_size)
+{
+  if (max_text_size < 2)
+  {
+    return; // Can't do much with that space
+  }
+
+  if (max_text_size < (3 + 10 + 1))
+  {
+    // Give an indicator that's debuggable
+    text_out[0] = 'X';
+    text_out[1] = '\0';
+    return;
+  }
+
+  getBandString(GetActiveVfoFreq(), text_out, max_text_size);
 }
 
 void toSSB(char* text_out, const uint16_t max_text_size)
