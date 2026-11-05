@@ -28,6 +28,7 @@ Menu_t* const rootMenu = &mainMenu;
 
 bool mainMenuSelecting = false;//Tracks if we're selecting buttons with knob, or adjusting frequency
 int16_t mainMenuSelectedItemRaw = 0;//Allow negative only for easier checks on wrap around
+static constexpr int32_t MAIN_TUNING_STEP_HZ = 10;
 
 void drawMainMenu(void)
 {
@@ -96,7 +97,7 @@ void mainMenuTune(int16_t knob)
   }
 
   const uint32_t current_freq = GetActiveVfoFreq();
-  const uint32_t new_freq = current_freq + (50 * knob);
+  const uint32_t new_freq = current_freq + (MAIN_TUNING_STEP_HZ * knob);
   
   SetActiveVfoFreq(new_freq);
   autoSelectSidebandChanged(current_freq);

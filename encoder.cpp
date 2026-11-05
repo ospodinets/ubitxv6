@@ -1,125 +1,122 @@
 #include <Arduino.h>
-#include <stdint.h>
+#include <stm32f4xx_hal.h>
 
 #include "encoder.h"
 #include "pin_definitions.h"
 
-//Normal encoder state
-uint8_t prev_enc = 0;
-int8_t enc_count = 0;
-
-//Momentum encoder state
-int16_t enc_count_periodic = 0;
-int8_t momentum[3] = {0};
 static const uint16_t CALLBACK_PERIOD_MS = 200;
-static const uint8_t MOMENTUM_MULTIPLIER = 1;
+static const uint32_t ENCODER_TIMER_MAX = 0xFFFF;
+static const int32_t ENCODER_TIMER_RANGE = ENCODER_TIMER_MAX + 1;
+static const int32_t ENCODER_TIMER_HALF_RANGE = ENCODER_TIMER_RANGE / 2;
 
-uint8_t enc_state (void)
-{
-  return (digitalRead(PIN_ENC_B) << 1) + (digitalRead(PIN_ENC_A) << 0);
-}
-
-/*
- * SmittyHalibut's encoder handling, using interrupts. Should be quicker, smoother handling.
- * The Interrupt Service Routine for Pin Change Interrupts on A0-A5.
- */
-ISR (PCINT1_vect)
-{
-  uint8_t cur_enc = enc_state();
-  if (prev_enc == cur_enc) {
-    //Serial.println("unnecessary ISR");
-    return;
-  }
-  //Serial.print(prev_enc);
-  //Serial.println(cur_enc);
-  
-  //these transitions point to the enccoder being rotated anti-clockwise
-  if ((prev_enc == 0 && cur_enc == 2) || 
-      (prev_enc == 2 && cur_enc == 3) || 
-      (prev_enc == 3 && cur_enc == 1) || 
-      (prev_enc == 1 && cur_enc == 0))
-  {
-    enc_count -= 1;
-    enc_count_periodic -= 1;
-  }
-  //these transitions point to the enccoder being rotated clockwise
-  else if ((prev_enc == 0 && cur_enc == 1) || 
-      (prev_enc == 1 && cur_enc == 3) || 
-      (prev_enc == 3 && cur_enc == 2) || 
-      (prev_enc == 2 && cur_enc == 0))
-  {
-    enc_count += 1;
-    enc_count_periodic += 1;
-  }
-  else {
-    // A change to two states, we can't tell whether it was forward or backward, so we skip it.
-    //Serial.println("skip");
-  }
-  prev_enc = cur_enc; // Record state for next pulse interpretation
-}
-
-/*
- * Setup the encoder interrupts and global variables.
- */
-void pci_setup(byte pin) {
-  *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // enable pin
-  PCIFR  |= bit (digitalPinToPCICRbit(pin)); // clear any outstanding interrupt
-  PCICR  |= bit (digitalPinToPCICRbit(pin)); // enable interrupt for the group
-}
+static TIM_HandleTypeDef encoderTimer;
+static int32_t enc_count = 0;
+static int32_t enc_count_periodic = 0;
+static int32_t momentum[3] = {0};
+static uint16_t previousEncoderCount = 0;
+static uint32_t lastMomentumSampleMs = 0;
 
 void enc_setup(void)
 {
   enc_count = 0;
-  // This is already done in setup() ?
-  //pinMode(PIN_ENC_A, INPUT);
-  //pinMode(PIN_ENC_B, INPUT);
-  prev_enc = enc_state();
-
-  // Setup Pin Change Interrupts for the encoder inputs
-  pci_setup(PIN_ENC_A);
-  pci_setup(PIN_ENC_B);
-
-  //Set up timer interrupt for momentum
-  TCCR1A = 0;//"normal" mode
-  TCCR1B = 3;//clock divider of 64
-  TCNT1  = 0;//start counting at 0
-  OCR1A  = F_CPU * (unsigned long)CALLBACK_PERIOD_MS / 1000 / 64;//set target number
-  TIMSK1 |= (1 << OCIE1A);//enable interrupt
-}
-
-ISR(TIMER1_COMPA_vect)
-{
-  momentum[2] = momentum[1];
-  momentum[1] = momentum[0];
-  momentum[0] = enc_count_periodic;
   enc_count_periodic = 0;
+  momentum[0] = 0;
+  momentum[1] = 0;
+  momentum[2] = 0;
+
+  GPIO_InitTypeDef gpioInit = {};
+  gpioInit.Pin = GPIO_PIN_4 | GPIO_PIN_5;
+  gpioInit.Mode = GPIO_MODE_AF_PP;
+  gpioInit.Pull = GPIO_PULLUP;
+  gpioInit.Speed = GPIO_SPEED_FREQ_LOW;
+  gpioInit.Alternate = GPIO_AF2_TIM3;
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  HAL_GPIO_Init(GPIOB, &gpioInit);
+
+  __HAL_RCC_TIM3_CLK_ENABLE();
+  encoderTimer.Instance = TIM3;
+  encoderTimer.Init.Prescaler = 0;
+  encoderTimer.Init.CounterMode = TIM_COUNTERMODE_UP;
+  encoderTimer.Init.Period = ENCODER_TIMER_MAX;
+  encoderTimer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  encoderTimer.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+
+  TIM_Encoder_InitTypeDef encoderConfig = {};
+  encoderConfig.EncoderMode = TIM_ENCODERMODE_TI12;
+  encoderConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  encoderConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
+  encoderConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  encoderConfig.IC1Filter = 0;
+  encoderConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
+  encoderConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
+  encoderConfig.IC2Prescaler = TIM_ICPSC_DIV1;
+  encoderConfig.IC2Filter = 0;
+
+  if (HAL_TIM_Encoder_Init(&encoderTimer, &encoderConfig) != HAL_OK ||
+      HAL_TIM_Encoder_Start(&encoderTimer, TIM_CHANNEL_ALL) != HAL_OK) {
+    Error_Handler();
+  }
+
+  previousEncoderCount = static_cast<uint16_t>(TIM3->CNT);
+  lastMomentumSampleMs = millis();
 }
 
-int8_t min_momentum_mag()
+static int32_t readEncoderDelta(void)
 {
-  int8_t min_mag = 127;
-  for(uint8_t i = 0; i < sizeof(momentum)/sizeof(momentum[0]); ++i){
-    int8_t mag = abs(momentum[i]);
-    if(mag < min_mag){
-      min_mag = mag;
-    }
+  const uint16_t currentCount = static_cast<uint16_t>(TIM3->CNT);
+  int32_t delta = static_cast<int32_t>(currentCount) - previousEncoderCount;
+  previousEncoderCount = currentCount;
+
+  if (delta > ENCODER_TIMER_HALF_RANGE) {
+    delta -= ENCODER_TIMER_RANGE;
+  } else if (delta < -ENCODER_TIMER_HALF_RANGE) {
+    delta += ENCODER_TIMER_RANGE;
   }
-  return min_mag;
+  return delta;
 }
 
-int enc_read(void) {
-  if(0 != enc_count){
-    int16_t ret = enc_count;
-    int8_t s = (enc_count < 0) ? -1 : 1;
-    int8_t momentum_mag = min_momentum_mag();
-    if(momentum_mag >= 20){
-      ret += s*40;
+static uint32_t minMomentumMagnitude(void)
+{
+  uint32_t minMagnitude = UINT32_MAX;
+  for (uint8_t i = 0; i < sizeof(momentum) / sizeof(momentum[0]); ++i) {
+    const uint32_t magnitude = momentum[i] < 0
+      ? static_cast<uint32_t>(-static_cast<int64_t>(momentum[i]))
+      : static_cast<uint32_t>(momentum[i]);
+    if (magnitude < minMagnitude) {
+      minMagnitude = magnitude;
     }
-    else if(momentum_mag >= 5){
-      ret += s*(20 + momentum_mag)/(20 - momentum_mag);
-    }
-    enc_count = 0;
-    return ret;
   }
-  return 0;
+  return minMagnitude;
+}
+
+int enc_read(void)
+{
+  const int32_t delta = readEncoderDelta();
+  enc_count += delta;
+  enc_count_periodic += delta;
+
+  const uint32_t now = millis();
+  while (now - lastMomentumSampleMs >= CALLBACK_PERIOD_MS) {
+    momentum[2] = momentum[1];
+    momentum[1] = momentum[0];
+    momentum[0] = enc_count_periodic;
+    enc_count_periodic = 0;
+    lastMomentumSampleMs += CALLBACK_PERIOD_MS;
+  }
+
+  if (enc_count == 0) {
+    return 0;
+  }
+
+  int32_t result = enc_count;
+  const int32_t direction = (enc_count < 0) ? -1 : 1;
+  const uint32_t momentumMagnitude = minMomentumMagnitude();
+  if (momentumMagnitude >= 20) {
+    result += direction * 40;
+  } else if (momentumMagnitude >= 5) {
+    result += direction * static_cast<int32_t>((20 + momentumMagnitude) / (20 - momentumMagnitude));
+  }
+
+  enc_count = 0;
+  return static_cast<int>(result);
 }
