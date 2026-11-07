@@ -27,7 +27,7 @@ void enc_setup(void)
   GPIO_InitTypeDef gpioInit = {};
   gpioInit.Pin = GPIO_PIN_4 | GPIO_PIN_5;
   gpioInit.Mode = GPIO_MODE_AF_PP;
-  gpioInit.Pull = GPIO_PULLUP;
+  gpioInit.Pull = GPIO_NOPULL;
   gpioInit.Speed = GPIO_SPEED_FREQ_LOW;
   gpioInit.Alternate = GPIO_AF2_TIM3;
   __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -46,11 +46,11 @@ void enc_setup(void)
   encoderConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
   encoderConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
   encoderConfig.IC1Prescaler = TIM_ICPSC_DIV1;
-  encoderConfig.IC1Filter = 0;
+  encoderConfig.IC1Filter = 0xF;
   encoderConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
   encoderConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
   encoderConfig.IC2Prescaler = TIM_ICPSC_DIV1;
-  encoderConfig.IC2Filter = 0;
+  encoderConfig.IC2Filter = 0xF;
 
   if (HAL_TIM_Encoder_Init(&encoderTimer, &encoderConfig) != HAL_OK ||
       HAL_TIM_Encoder_Start(&encoderTimer, TIM_CHANNEL_ALL) != HAL_OK) {

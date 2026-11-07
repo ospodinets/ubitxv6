@@ -96,9 +96,6 @@ void initPorts(){
   analogReference(AR_DEFAULT);
 
   //??
-  pinMode(PIN_ENC_A, INPUT_PULLUP);
-  pinMode(PIN_ENC_B, INPUT_PULLUP);
-  pinMode(PIN_ENC_PUSH_BUTTON, INPUT_PULLUP);
   enc_setup();
   
   //configure the function button to use the external pull-up

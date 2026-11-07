@@ -28,7 +28,7 @@ Menu_t* const rootMenu = &mainMenu;
 
 bool mainMenuSelecting = false;//Tracks if we're selecting buttons with knob, or adjusting frequency
 int16_t mainMenuSelectedItemRaw = 0;//Allow negative only for easier checks on wrap around
-static constexpr int32_t MAIN_TUNING_STEP_HZ = 10;
+static constexpr int32_t MAIN_TUNING_STEP_HZ = 50;
 
 void drawMainMenu(void)
 {
