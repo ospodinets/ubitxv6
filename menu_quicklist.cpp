@@ -8,7 +8,7 @@
 #include "menu_np_ql_shared.h"
 #include "menu_utils.h"
 #include "nano_gui.h"
-#include "scratch_space.h"
+#include "menu.h"
 
 void initQuickList(void);
 MenuReturn_e runQuickList(const ButtonPress_e tuner_button,
@@ -27,12 +27,10 @@ int16_t quickListMenuSelectedItemRaw = 0;//Allow negative only for easier checks
 
 void drawQuickList(void)
 {
-  displayFillrect(0,47,320,200,COLOR_BACKGROUND);
+  displayFillrect(0,LAYOUT_PAGE_Y,320,200,COLOR_BACKGROUND);
   for(uint8_t i = 0; i < QUICKLIST_MENU_NUM_BUTTONS; ++i){
     quickListMenuButtons[i]->draw();
   }
-  strncpy_P(b,(const char*)F("Short press = load\nLong press = save"),sizeof(b));
-  displayText(b,10,47,170,200,COLOR_TEXT,COLOR_BACKGROUND,COLOR_BACKGROUND);
 }
 
 void initQuickList(void)

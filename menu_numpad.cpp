@@ -8,6 +8,7 @@
 #include "menu_np_ql_shared.h"
 #include "menu_utils.h"
 #include "nano_gui.h"
+#include "menu.h"
 
 void initNumpad(void);
 MenuReturn_e runNumpad(const ButtonPress_e tuner_button,
@@ -26,7 +27,7 @@ int16_t numpadMenuSelectedItemRaw = 0;//Allow negative only for easier checks on
 
 void drawNumpad(void)
 {
-  displayFillrect(0,47,320,200,COLOR_BACKGROUND);
+  displayFillrect(0,LAYOUT_PAGE_Y,320,200,COLOR_BACKGROUND);
   drawNumpadButtons();
 }
 

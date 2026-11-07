@@ -10,6 +10,7 @@
 #include "callsign.h"
 #include "color_theme.h"
 #include "label.h"
+#include "menu.h"
 #include "menu_main.h"
 #include "menu_numpad.h"
 #include "menu_quicklist.h"
@@ -76,6 +77,7 @@ static const unsigned int LAYOUT_VERSION_TEXT_Y = DISPLAY_HEIGHT - 6;
 static const unsigned int LAYOUT_VERSION_TEXT_WIDTH = DISPLAY_WIDTH/2;
 static const unsigned int LAYOUT_VERSION_TEXT_HEIGHT = 6;
 
+int16_t LAYOUT_PAGE_Y = LAYOUT_VFO_SEC_Y;
 
 void drawTx()
 {
@@ -463,7 +465,7 @@ void osVfoSec()
   ltoa(GetActiveVfoFreq(), b, 10);
   morseText(b);
 
-  drawButton(&bVfoSec);
+  bVfoSec.draw();
   drawVfo();
   drawBand();
   updateSidebandButton();
@@ -486,13 +488,13 @@ void osRit()
     setFrequency(globalSettings.ritFrequency);
   }
 
-  drawButton(&bVfoSec);
-  drawButton(&bRit);
+  bVfoSec.draw();
+  bRit.draw();
 }
 
 void updateSidebandButton()
 {
-  drawButton(&bSSB);
+  bSSB.draw();
 }
 
 void toVfoMain(char* text_out, const uint16_t max_text_size)
@@ -566,7 +568,7 @@ void osSSB()
   setFrequency(GetActiveVfoFreq());
   SaveSettingsToEeprom();
 
-  drawButton(&bSSB);
+  bSSB.draw();
 }
 
 ButtonStatus_e bsCw()
@@ -587,7 +589,7 @@ void osCw()
 
   setFrequency(GetActiveVfoFreq());
 
-  drawButton(&bCw);
+  bCw.draw();
 }
 
 ButtonStatus_e bsSpl()
@@ -599,8 +601,8 @@ void osSpl()
 {
   globalSettings.splitOn = !globalSettings.splitOn;
 
-  drawButton(&bSpl);
-  drawButton(&bVfoSec);
+  bSpl.draw();
+  bVfoSec.draw();
 }
 
 void osUp()

@@ -27,3 +27,5 @@ void runActiveMenu(const ButtonPress_e tuner_button,
                    const int16_t knob);
 
 void enterSubmenu(Menu_t *const submenu);
+
+extern int16_t LAYOUT_PAGE_Y;

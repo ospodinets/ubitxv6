@@ -1,6 +1,5 @@
 #include "menu_quicklist_buttons.h"
 
-#include <avr/pgmspace.h>
 #include <WString.h>//F()
 
 #include "color_theme.h"
@@ -8,24 +7,25 @@
 #include "scratch_space.h"
 #include "settings.h"
 #include "utils.h"
+#include "menu.h"
 
-static const unsigned int LAYOUT_BUTTON_X = 180;
-static const unsigned int LAYOUT_BUTTON_Y = 47;
-static const unsigned int LAYOUT_BUTTON_WIDTH = 140;
-static const unsigned int LAYOUT_BUTTON_HEIGHT = 36;
-static const unsigned int LAYOUT_BUTTON_PITCH_X = LAYOUT_BUTTON_WIDTH + 1;
-static const unsigned int LAYOUT_BUTTON_PITCH_Y = 40;
+static const int16_t LAYOUT_BUTTON_X = 3;
+static const int16_t LAYOUT_BUTTON_Y = LAYOUT_PAGE_Y;
+static const int16_t LAYOUT_BUTTON_WIDTH = 156;
+static const int16_t LAYOUT_BUTTON_HEIGHT = 36;
+static const int16_t LAYOUT_BUTTON_PITCH_X = LAYOUT_BUTTON_WIDTH + 1;
+static const int16_t LAYOUT_BUTTON_PITCH_Y = 40;
 
 ButtonPress_e quickListSelectionMode;
 
 #define D_STRINGIFY(x) #x
 #define D_STRING(x) D_STRINGIFY(x)
-#define QUICKLIST_BUTTON_GENERATE(number) \
+#define QUICKLIST_BUTTON_GENERATE(idX, idY, number) \
           void toQL##number(char* text_out, const uint16_t max_text_size);\
           void osQL##number();\
           static Button bQL##number = {\
-            LAYOUT_BUTTON_X,\
-            LAYOUT_BUTTON_Y + number*LAYOUT_BUTTON_PITCH_Y,\
+            LAYOUT_BUTTON_X + idX*LAYOUT_BUTTON_PITCH_X,\
+            LAYOUT_BUTTON_Y + idY*LAYOUT_BUTTON_PITCH_Y,\
             LAYOUT_BUTTON_WIDTH,\
             LAYOUT_BUTTON_HEIGHT,\
             nullptr,\
@@ -40,19 +40,20 @@ ButtonStatus_e bsQuickList(void){
 }
 
 //Unfortunately there's no easy way to auto-generate NUM_QUICKLIST_SETTINGS copies of this
-QUICKLIST_BUTTON_GENERATE(0);
-QUICKLIST_BUTTON_GENERATE(1);
-QUICKLIST_BUTTON_GENERATE(2);
-QUICKLIST_BUTTON_GENERATE(3);
+QUICKLIST_BUTTON_GENERATE(0, 0, 0);
+QUICKLIST_BUTTON_GENERATE(1, 0, 1);
+QUICKLIST_BUTTON_GENERATE(0, 1, 2);
+QUICKLIST_BUTTON_GENERATE(1, 1, 3);
+QUICKLIST_BUTTON_GENERATE(0, 2, 4);
+QUICKLIST_BUTTON_GENERATE(1, 2, 5);
 
-constexpr char txtQLCancel [] PROGMEM = "Can";
 void osQLCancel();
 static Button bQLCancel = {
-  LAYOUT_BUTTON_X,
-  LAYOUT_BUTTON_Y + 4*LAYOUT_BUTTON_PITCH_Y,
-  LAYOUT_BUTTON_WIDTH,
+  3,
+  LAYOUT_BUTTON_Y + 3 * LAYOUT_BUTTON_PITCH_Y,
+  320 - 6,
   LAYOUT_BUTTON_HEIGHT,
-  txtQLCancel,
+  "Cancel",
   nullptr,
   bsQuickList,
   osQLCancel,
@@ -61,7 +62,7 @@ static Button bQLCancel = {
 
 //Declare in menu select order, not graphical order
 const Button* const quickListMenuButtons [] = {
-  &bQL0, &bQL1, &bQL2, &bQL3, &bQLCancel
+  &bQL0, &bQL1, &bQL2, &bQL3, &bQL4, &bQL5, &bQLCancel
 };
 const uint8_t QUICKLIST_MENU_NUM_BUTTONS = sizeof(quickListMenuButtons)/sizeof(quickListMenuButtons[0]);
 
@@ -99,6 +100,8 @@ QUICKLIST_ONSELECT_GENERATE(0);
 QUICKLIST_ONSELECT_GENERATE(1);
 QUICKLIST_ONSELECT_GENERATE(2);
 QUICKLIST_ONSELECT_GENERATE(3);
+QUICKLIST_ONSELECT_GENERATE(4);
+QUICKLIST_ONSELECT_GENERATE(5);
 
 #define QUICKLIST_TEXTOVERRIDE_GENERATE(number) \
           void toQL##number(char* text_out, const uint16_t max_text_size){\
@@ -107,7 +110,6 @@ QUICKLIST_ONSELECT_GENERATE(3);
 
 void toQuickList(uint8_t index, char* text_out, const uint16_t max_text_size)
 {
-  
   if(max_text_size < 2){
     return;//Can't do much with that space
   }
@@ -119,7 +121,7 @@ void toQuickList(uint8_t index, char* text_out, const uint16_t max_text_size)
   }
 
   //Normal operation
-  text_out[0] = '0'+index;//Assume a 1-digit number for now
+  text_out[0] = '0'+index+1;//Assume a 1-digit number for now
   text_out[1] = ':';
   text_out[2] = ' ';
   formatFreq(globalSettings.quickList[index].frequency, text_out+3, max_text_size-3, 10);
@@ -130,8 +132,11 @@ QUICKLIST_TEXTOVERRIDE_GENERATE(0);
 QUICKLIST_TEXTOVERRIDE_GENERATE(1);
 QUICKLIST_TEXTOVERRIDE_GENERATE(2);
 QUICKLIST_TEXTOVERRIDE_GENERATE(3);
+QUICKLIST_TEXTOVERRIDE_GENERATE(4);
+QUICKLIST_TEXTOVERRIDE_GENERATE(5);
 
 void osQLCancel()
 {
   quickListSelectionMode = ButtonPress_e::NotPressed;
 }
+  

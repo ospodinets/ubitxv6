@@ -9,9 +9,10 @@
 #include "settings.h"
 #include "tuner.h"//setFrequency
 #include "utils.h"
+#include "menu.h"
 
 static const unsigned int LAYOUT_MODE_TEXT_X = 60;
-static const unsigned int LAYOUT_MODE_TEXT_Y = 47;
+static const unsigned int LAYOUT_MODE_TEXT_Y = LAYOUT_PAGE_Y;
 static const unsigned int LAYOUT_MODE_TEXT_WIDTH = 140;
 static const unsigned int LAYOUT_MODE_TEXT_HEIGHT = 36;
 
