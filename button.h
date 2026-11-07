@@ -37,5 +37,3 @@ private:
   Style* m_inactiveStyle;
   Style* m_activeStyle;
 };
-
-void drawButton(const Button* button);

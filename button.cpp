@@ -39,10 +39,3 @@ void Button::draw() const
   }
   drawWithStyle(style);
 }
-
-void drawButton(const Button* button)
-{
-  if (button != nullptr) {
-    button->draw();
-  }
-}

@@ -35,7 +35,7 @@ void drawMainMenu(void)
   displayClear(COLOR_BACKGROUND);
   invalidateVfo();
   for(uint8_t i = 0; i < MAIN_MENU_NUM_BUTTONS; ++i){
-    drawButton(mainMenuButtons[i]);
+    mainMenuButtons[i]->draw();
   }
   drawVfo();
   drawVersion();
@@ -74,17 +74,17 @@ void drawMainMenuIncrement()
 
   if(last_split != globalSettings.splitOn){
     drawVfo();
-    drawButton(&bSpl);
+    bSpl.draw();
     last_split = globalSettings.splitOn;
   }
 
   if(last_rit != globalSettings.ritOn){
-    drawButton(&bRit);
+    bRit.draw();
     last_rit = globalSettings.ritOn;
   }
 
   if(last_tuning != globalSettings.tuningMode){
-    drawButton(&bCw);
+    bCw.draw();
     last_tuning = globalSettings.tuningMode;
   }
 }

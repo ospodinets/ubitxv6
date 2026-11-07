@@ -159,3 +159,11 @@ void osCancel(void)
 {
   numpadSelectionMode = ButtonPress_e::NotPressed;
 }
+
+void drawNumpadButtons(void)
+{
+  updateCurrentEnteredFrequency();
+  for(uint8_t i = 0; i < NUMPAD_MENU_NUM_BUTTONS; ++i){
+    numpadMenuButtons[i]->draw();
+  }
+}
