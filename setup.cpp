@@ -1,7 +1,9 @@
 #include "toneAC2/toneAC2.h"
 #include "colors.h"
+#include "button.h"
 #include "encoder.h"
 #include "menu.h"
+#include "menu_utils.h"
 #include "morse.h"
 #include "nano_gui.h"
 #include "pin_definitions.h"
@@ -74,8 +76,6 @@ void displayDialog(const char* title,
   displayText(b, LAYOUT_TITLE_X, LAYOUT_TITLE_Y, LAYOUT_TITLE_WIDTH, LAYOUT_TITLE_HEIGHT, COLOR_TEXT, COLOR_TITLE_BACKGROUND, COLOR_ACTIVE_BORDER);
   strncpy_P(b,instructions,sizeof(b));
   displayText(b, LAYOUT_INSTRUCTIONS_TEXT_X, LAYOUT_INSTRUCTIONS_TEXT_Y, LAYOUT_INSTRUCTIONS_TEXT_WIDTH, LAYOUT_INSTRUCTIONS_TEXT_HEIGHT, COLOR_TEXT, COLOR_BACKGROUND, COLOR_BACKGROUND, TextJustification_e::Left);
-  strncpy_P(b,(const char*)F("Push Tune to Save"),sizeof(b));
-  displayText(b, LAYOUT_CONFIRM_TEXT_X, LAYOUT_CONFIRM_TEXT_Y, LAYOUT_CONFIRM_TEXT_WIDTH, LAYOUT_CONFIRM_TEXT_HEIGHT, COLOR_TEXT, COLOR_BACKGROUND, COLOR_BACKGROUND);
 }
 
 struct SettingScreen_t {
@@ -87,6 +87,7 @@ struct SettingScreen_t {
   void (*Validate)(const long int candidate_value_in, long int* validated_value_out);
   void (*OnValueChange)(const long int new_value, char* buff_out, const size_t buff_out_size);
   void (*Finalize)(const long int final_value);
+  void (*TouchNext)(const long int current_value, long int* next_value_out);
 };
 
 void drawSetting(const SettingScreen_t* const screen)
@@ -99,6 +100,61 @@ void drawSetting(const SettingScreen_t* const screen)
 int32_t setupMenuRawValue = 0;
 int32_t setupMenuLastValue = 0;
 const SettingScreen_t* activeSettingP;
+char setupMenuDisplayedValue[30];
+bool setupMenuSettingFinished;
+
+static Style settingValueInactiveStyle = {
+  COLOR_TEXT, COLOR_TITLE_BACKGROUND, COLOR_BACKGROUND,
+  TextJustification_e::Center, FontFamily_e::Regular, 1
+};
+static Style settingSaveInactiveStyle = {
+  COLOR_TEXT, COLOR_BACKGROUND, COLOR_ACTIVE_BORDER,
+  TextJustification_e::Center, FontFamily_e::Regular, 1
+};
+
+void settingValueText(char* text_out, const uint16_t max_text_size)
+{
+  if(0 == max_text_size){
+    return;
+  }
+  strncpy(text_out,setupMenuDisplayedValue,max_text_size);
+  text_out[max_text_size - 1] = '\0';
+}
+
+ButtonStatus_e settingButtonStatus()
+{
+  return ButtonStatus_e::Stateless;
+}
+
+void advanceSettingValue();
+void saveSettingValue();
+
+static Button settingValueButton = {
+  LAYOUT_SETTING_VALUE_X, LAYOUT_SETTING_VALUE_Y,
+  LAYOUT_SETTING_VALUE_WIDTH, LAYOUT_SETTING_VALUE_HEIGHT,
+  nullptr, settingValueText, settingButtonStatus, advanceSettingValue, 'N',
+  &settingValueInactiveStyle, &settingValueInactiveStyle
+};
+static Button settingSaveButton = {
+  LAYOUT_CONFIRM_TEXT_X, LAYOUT_CONFIRM_TEXT_Y,
+  LAYOUT_CONFIRM_TEXT_WIDTH, LAYOUT_CONFIRM_TEXT_HEIGHT,
+  "Push Tune to Save", nullptr,
+  settingButtonStatus, saveSettingValue, 'S',
+  &settingSaveInactiveStyle, &settingSaveInactiveStyle
+};
+static const Button* const settingButtons[] = {
+  &settingValueButton, &settingSaveButton
+};
+
+void refreshSettingValue(const SettingScreen_t& screen, const long int value)
+{
+  screen.OnValueChange(value,b,sizeof(b));
+  strncpy(setupMenuDisplayedValue,b,sizeof(setupMenuDisplayedValue));
+  setupMenuDisplayedValue[sizeof(setupMenuDisplayedValue) - 1] = '\0';
+  settingValueButton.invalidate();
+  settingValueButton.draw();
+  setupMenuLastValue = value;
+}
 
 void activateSetting(SettingScreen_t* new_setting_P);
 
@@ -118,14 +174,56 @@ void initSetting()
   if(nullptr == activeSettingP){
     return;
   }
-  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr};
+  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr,nullptr};
   memcpy_P(&screen,activeSettingP,sizeof(screen));
   drawSetting(&screen);
   screen.Initialize(&setupMenuLastValue);
+  setupMenuSettingFinished = false;
   screen.OnValueChange(setupMenuLastValue,b,sizeof(b));
-  displayText(b, LAYOUT_SETTING_VALUE_X, LAYOUT_SETTING_VALUE_Y, LAYOUT_SETTING_VALUE_WIDTH, LAYOUT_SETTING_VALUE_HEIGHT, COLOR_TEXT, COLOR_TITLE_BACKGROUND, COLOR_BACKGROUND);
+  strncpy(setupMenuDisplayedValue,b,sizeof(setupMenuDisplayedValue));
+  setupMenuDisplayedValue[sizeof(setupMenuDisplayedValue) - 1] = '\0';
+  settingValueButton.invalidate();
+  settingValueButton.draw();
   displayText(b, LAYOUT_SETTING_REF_VALUE_X, LAYOUT_SETTING_REF_VALUE_Y, LAYOUT_SETTING_REF_VALUE_WIDTH, LAYOUT_SETTING_REF_VALUE_HEIGHT, COLOR_SETTING_BACKGROUND, COLOR_BACKGROUND, COLOR_BACKGROUND);
   setupMenuRawValue = setupMenuLastValue * (int32_t)screen.KnobDivider;
+  settingSaveButton.invalidate();
+  settingSaveButton.draw();
+}
+
+void saveSettingValue()
+{
+  if(nullptr == activeSettingP){
+    return;
+  }
+  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr,nullptr};
+  memcpy_P(&screen,activeSettingP,sizeof(screen));
+  screen.Finalize(setupMenuLastValue);
+  setupMenuSettingFinished = true;
+}
+
+void advanceSettingValue()
+{
+  if(nullptr == activeSettingP){
+    return;
+  }
+  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr,nullptr};
+  memcpy_P(&screen,activeSettingP,sizeof(screen));
+
+  long int candidate_value;
+  if(nullptr != screen.TouchNext){
+    screen.TouchNext(setupMenuLastValue,&candidate_value);
+  }
+  else{
+    const long int direction = (0 > screen.StepSize) ? -1 : 1;
+    candidate_value = setupMenuLastValue + direction * abs(screen.StepSize);
+  }
+
+  long int value = 0;
+  screen.Validate(candidate_value,&value);
+  if(value != setupMenuLastValue){
+    refreshSettingValue(screen,value);
+    setupMenuRawValue = value * (int32_t)screen.KnobDivider;
+  }
 }
 
 MenuReturn_e runSetting(const ButtonPress_e tuner_button,
@@ -136,7 +234,7 @@ MenuReturn_e runSetting(const ButtonPress_e tuner_button,
   if(nullptr == activeSettingP){
     return MenuReturn_e::ExitedRedraw;
   }
-  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr};
+  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr,nullptr};
   memcpy_P(&screen,activeSettingP,sizeof(screen));
 
   if(ButtonPress_e::NotPressed != tuner_button){
@@ -145,7 +243,18 @@ MenuReturn_e runSetting(const ButtonPress_e tuner_button,
     return MenuReturn_e::ExitedRedraw;
   }
 
-  (void)touch_button;(void)touch_point;//TODO: handle touch input?
+  if(ButtonPress_e::NotPressed != touch_button){
+    const Button* button = findPressedButton(settingButtons,
+                                              sizeof(settingButtons)/sizeof(settingButtons[0]),
+                                              touch_point);
+    if(nullptr != button){
+      button->select();
+      if(setupMenuSettingFinished){
+        return MenuReturn_e::ExitedRedraw;
+      }
+    }
+    return MenuReturn_e::StillActive;
+  }
 
   if(0 != knob){
     setupMenuRawValue += knob * screen.StepSize;
@@ -160,9 +269,7 @@ MenuReturn_e runSetting(const ButtonPress_e tuner_button,
     }
 
     if(value != setupMenuLastValue){
-      screen.OnValueChange(value,b,sizeof(b));
-      displayText(b, LAYOUT_SETTING_VALUE_X, LAYOUT_SETTING_VALUE_Y, LAYOUT_SETTING_VALUE_WIDTH, LAYOUT_SETTING_VALUE_HEIGHT, COLOR_TEXT, COLOR_TITLE_BACKGROUND, COLOR_BACKGROUND);
-      setupMenuLastValue = value;
+      refreshSettingValue(screen,value);
     }
   }
 
@@ -217,7 +324,8 @@ const SettingScreen_t ssLocalOsc PROGMEM = {
   ssLocalOscInitialize,
   ssLocalOscValidate,
   ssLocalOscChange,
-  ssLocalOscFinalize
+  ssLocalOscFinalize,
+  nullptr
 };
 void runLocalOscSetting(){activateSetting(&ssLocalOsc);}
 
@@ -255,7 +363,8 @@ const SettingScreen_t ssBfo PROGMEM = {
   ssBfoInitialize,
   ssBfoValidate,
   ssBfoChange,
-  ssBfoFinalize
+  ssBfoFinalize,
+  nullptr
 };
 void runBfoSetting(){activateSetting(&ssBfo);}
 
@@ -291,7 +400,8 @@ const SettingScreen_t ssTone PROGMEM = {
   ssCwToneInitialize,
   ssCwToneValidate,
   ssCwToneChange,
-  ssCwToneFinalize
+  ssCwToneFinalize,
+  nullptr
 };
 void runToneSetting(){activateSetting(&ssTone);}
 
@@ -326,7 +436,8 @@ const SettingScreen_t ssCwSwitchDelay PROGMEM = {
   ssCwSwitchDelayInitialize,
   ssCwSwitchDelayValidate,
   ssCwSwitchDelayChange,
-  ssCwSwitchDelayFinalize
+  ssCwSwitchDelayFinalize,
+  nullptr
 };
 void runCwSwitchDelaySetting(){activateSetting(&ssCwSwitchDelay);}
 
@@ -338,6 +449,13 @@ void ssKeyerInitialize(long int* start_value_out)
 void ssKeyerValidate(const long int candidate_value_in, long int* validated_value_out)
 {
   *validated_value_out = LIMIT(candidate_value_in,(uint8_t)KeyerMode_e::KEYER_STRAIGHT,(uint8_t)KeyerMode_e::KEYER_IAMBIC_B);
+}
+void ssKeyerTouchNext(const long int current_value, long int* next_value_out)
+{
+  const long int last_value = (uint8_t)KeyerMode_e::KEYER_IAMBIC_B;
+  *next_value_out = current_value >= last_value
+                  ? (uint8_t)KeyerMode_e::KEYER_STRAIGHT
+                  : current_value + 1;
 }
 void ssKeyerChange(const long int new_value, char* buff_out, const size_t buff_out_size)
 {
@@ -372,7 +490,8 @@ const SettingScreen_t ssKeyer PROGMEM = {
   ssKeyerInitialize,
   ssKeyerValidate,
   ssKeyerChange,
-  ssKeyerFinalize
+  ssKeyerFinalize,
+  ssKeyerTouchNext
 };
 void runKeyerSetting(){activateSetting(&ssKeyer);}
 
@@ -384,6 +503,10 @@ void ssMorseMenuInitialize(long int* start_value_out)
 void ssMorseMenuValidate(const long int candidate_value_in, long int* validated_value_out)
 {
   *validated_value_out = LIMIT(candidate_value_in,0,1);
+}
+void ssToggleTouchNext(const long int current_value, long int* next_value_out)
+{
+  *next_value_out = current_value ? 0 : 1;
 }
 void ssMorseMenuChange(const long int new_value, char* buff_out, const size_t buff_out_size)
 {
@@ -414,7 +537,8 @@ const SettingScreen_t ssMorseMenu PROGMEM = {
   ssMorseMenuInitialize,
   ssMorseMenuValidate,
   ssMorseMenuChange,
-  ssMorseMenuFinalize
+  ssMorseMenuFinalize,
+  ssToggleTouchNext
 };
 void runMorseMenuSetting(){activateSetting(&ssMorseMenu);}
 
@@ -448,7 +572,8 @@ const SettingScreen_t ssCwSpeed PROGMEM = {
   ssCwSpeedInitialize,
   ssCwSpeedValidate,
   ssCwSpeedChange,
-  ssCwSpeedFinalize
+  ssCwSpeedFinalize,
+  nullptr
 };
 void runCwSpeedSetting(){activateSetting(&ssCwSpeed);}
 
@@ -493,7 +618,8 @@ const SettingScreen_t ssResetAll PROGMEM = {
   ssResetAllInitialize,
   ssResetAllValidate,
   ssResetAllChange,
-  ssResetAllFinalize
+  ssResetAllFinalize,
+  ssToggleTouchNext
 };
 void runResetAllSetting(){activateSetting(&ssResetAll);}
 
@@ -580,6 +706,96 @@ Menu_t *const setupMenu = &setupMenuSetupRoot;
 const char MI_EXIT [] PROGMEM = "Exit";
 const MenuItem_t exitMenu PROGMEM = {MI_EXIT,nullptr};
 
+int16_t setupMenuSelector = 0;
+const MenuItem_t* activeSetupMenuItems;
+uint16_t activeSetupMenuItemCount;
+bool setupMenuExitSelected;
+
+uint8_t setupMenuSelectedButton()
+{
+  return setupMenuSelector / MENU_KNOB_COUNTS_PER_ITEM;
+}
+
+void setupMenuButtonText(uint8_t index, char* text_out, const uint16_t max_text_size)
+{
+  if(0 == max_text_size){
+    return;
+  }
+
+  if(index < activeSetupMenuItemCount - 1){
+    MenuItem_t mi = {"",nullptr};
+    memcpy_P(&mi,&activeSetupMenuItems[index + 1],sizeof(mi));
+    strncpy_P(text_out,mi.ItemName,max_text_size);
+    text_out[max_text_size - 1] = '\0';
+  }
+  else{
+    strncpy_P(text_out,MI_EXIT,max_text_size);
+    text_out[max_text_size - 1] = '\0';
+  }
+}
+
+void setupMenuButtonSelect(uint8_t index)
+{
+  if(index >= activeSetupMenuItemCount - 1){
+    setupMenuExitSelected = true;
+    return;
+  }
+
+  MenuItem_t mi = {"",nullptr};
+  memcpy_P(&mi,&activeSetupMenuItems[index + 1],sizeof(mi));
+  if(nullptr == mi.OnSelect){
+    setupMenuExitSelected = true;
+  }
+  else{
+    mi.OnSelect();
+  }
+}
+
+ButtonStatus_e setupMenuButtonStatus(uint8_t index)
+{
+  return index == setupMenuSelectedButton()
+       ? ButtonStatus_e::Active
+       : ButtonStatus_e::Inactive;
+}
+
+#define SETUP_MENU_BUTTON_GENERATE(index) \
+  void setupMenuButtonText##index(char* text_out, const uint16_t max_text_size){setupMenuButtonText(index,text_out,max_text_size);}\
+  ButtonStatus_e setupMenuButtonStatus##index(){return setupMenuButtonStatus(index);}\
+  void setupMenuButtonSelect##index(){setupMenuButtonSelect(index);}\
+  static Button setupMenuButton##index = {\
+    LAYOUT_ITEM_X, LAYOUT_ITEM_Y + index*LAYOUT_ITEM_PITCH_Y,\
+    LAYOUT_ITEM_WIDTH, LAYOUT_ITEM_HEIGHT,\
+    nullptr, setupMenuButtonText##index,\
+    setupMenuButtonStatus##index, setupMenuButtonSelect##index,\
+    '1' + index, &setupMenuInactiveStyle, &setupMenuActiveStyle\
+  }
+
+static Style setupMenuInactiveStyle = {
+  COLOR_TEXT, COLOR_BACKGROUND, COLOR_INACTIVE_BORDER,
+  TextJustification_e::Left, FontFamily_e::Regular, 1
+};
+static Style setupMenuActiveStyle = {
+  COLOR_TEXT, COLOR_TITLE_BACKGROUND, COLOR_ACTIVE_BORDER,
+  TextJustification_e::Left, FontFamily_e::Regular, 1
+};
+
+SETUP_MENU_BUTTON_GENERATE(0);
+SETUP_MENU_BUTTON_GENERATE(1);
+SETUP_MENU_BUTTON_GENERATE(2);
+SETUP_MENU_BUTTON_GENERATE(3);
+SETUP_MENU_BUTTON_GENERATE(4);
+SETUP_MENU_BUTTON_GENERATE(5);
+
+const Button* const setupMenuButtons[] = {
+  &setupMenuButton0, &setupMenuButton1, &setupMenuButton2,
+  &setupMenuButton3, &setupMenuButton4, &setupMenuButton5
+};
+
+void drawSetupMenuButton(uint8_t index)
+{
+  setupMenuButtons[index]->draw();
+}
+
 void drawMenu(const MenuItem_t* const items, const uint16_t num_items)
 {
   displayClear(COLOR_BACKGROUND);
@@ -587,39 +803,41 @@ void drawMenu(const MenuItem_t* const items, const uint16_t num_items)
   memcpy_P(&mi,&items[0],sizeof(mi));
   strncpy_P(b,mi.ItemName,sizeof(b));
   displayText(b, LAYOUT_TITLE_X, LAYOUT_TITLE_Y, LAYOUT_TITLE_WIDTH, LAYOUT_TITLE_HEIGHT, COLOR_TEXT, COLOR_TITLE_BACKGROUND, COLOR_ACTIVE_BORDER);
-  for(unsigned int i = 1; i < num_items; ++i){
-    memcpy_P(&mi,&items[i],sizeof(mi));
-    strncpy_P(b,mi.ItemName,sizeof(b));
-    displayText(b, LAYOUT_ITEM_X, LAYOUT_ITEM_Y + (i-1)*LAYOUT_ITEM_PITCH_Y, LAYOUT_ITEM_WIDTH, LAYOUT_ITEM_HEIGHT, COLOR_TEXT, COLOR_BACKGROUND, COLOR_INACTIVE_BORDER, TextJustification_e::Left);
+  for(uint8_t i = 0; i < num_items; ++i){
+    drawSetupMenuButton(i);
   }
-  memcpy_P(&mi,&exitMenu,sizeof(mi));
-  strncpy_P(b,mi.ItemName,sizeof(b));
-  displayText(b, LAYOUT_ITEM_X, LAYOUT_ITEM_Y + (num_items-1)*LAYOUT_ITEM_PITCH_Y, LAYOUT_ITEM_WIDTH, LAYOUT_ITEM_HEIGHT, COLOR_TEXT, COLOR_BACKGROUND, COLOR_INACTIVE_BORDER, TextJustification_e::Left);
 }
 
-void movePuck(unsigned int old_index,
-              unsigned int new_index)
+void setSetupMenuSelection(uint8_t new_index)
 {
-  //Don't update if we're already on the right selection
+  const uint8_t old_index = setupMenuSelectedButton();
   if(old_index == new_index){
     return;
   }
-  else if(((unsigned int)-1) != old_index){
-    //Clear old
-    displayRect(LAYOUT_ITEM_X, LAYOUT_ITEM_Y + (old_index*LAYOUT_ITEM_PITCH_Y), LAYOUT_ITEM_WIDTH, LAYOUT_ITEM_HEIGHT, COLOR_INACTIVE_BORDER);
-  }
-  //Draw new
-  displayRect(LAYOUT_ITEM_X, LAYOUT_ITEM_Y + (new_index*LAYOUT_ITEM_PITCH_Y), LAYOUT_ITEM_WIDTH, LAYOUT_ITEM_HEIGHT, COLOR_ACTIVE_BORDER);
+
+  setupMenuSelector = new_index * MENU_KNOB_COUNTS_PER_ITEM;
+  drawSetupMenuButton(old_index);
+  drawSetupMenuButton(new_index);
 }
 
-int16_t setupMenuSelector = 0;
+void playSetupMenuSelection(uint8_t index)
+{
+  if(!globalSettings.morseMenuOn){
+    return;
+  }
+
+  setupMenuButtonText(index,b,sizeof(b));
+  morseText(b);
+}
 
 void initSetupMenu(const MenuItem_t* const menu_items,
                    const uint16_t num_items)
 {
-  drawMenu(menu_items,num_items);
+  activeSetupMenuItems = menu_items;
+  activeSetupMenuItemCount = num_items;
   setupMenuSelector = 0;
-  movePuck(-1,0);//Force draw of puck
+  setupMenuExitSelected = false;
+  drawMenu(menu_items,num_items);
 }
 
 MenuReturn_e runSetupMenu(const MenuItem_t* const menu_items,
@@ -629,40 +847,37 @@ MenuReturn_e runSetupMenu(const MenuItem_t* const menu_items,
                           const Point touch_point,
                           const int16_t knob)
 {
-  const int16_t cur_index = setupMenuSelector/MENU_KNOB_COUNTS_PER_ITEM;
-  const int16_t exit_index = num_items - 1;
+  (void)menu_items;
+  if(setupMenuExitSelected){
+    return MenuReturn_e::ExitedRedraw;
+  }
 
   if(ButtonPress_e::NotPressed != tuner_button){
-    //Don't care what kind of press
-    if(exit_index <= cur_index){
-      return MenuReturn_e::ExitedRedraw;
-    }
-
-    MenuItem_t mi = {"",nullptr};
-    memcpy_P(&mi,&menu_items[cur_index+1],sizeof(mi));//The 0th element in the array is the title, so offset by 1
-    mi.OnSelect();
+    setupMenuButtons[setupMenuSelectedButton()]->select();
   }
-
-  (void)touch_button;(void)touch_point;//TODO: handle touch input?
-
-  if(0 != knob){
-    setupMenuSelector = LIMIT(setupMenuSelector + knob,0,(int16_t)(num_items*MENU_KNOB_COUNTS_PER_ITEM - 1));
-    const int16_t new_index = setupMenuSelector/MENU_KNOB_COUNTS_PER_ITEM;
-    if(cur_index != new_index){
-      movePuck(cur_index,new_index);
-      if(globalSettings.morseMenuOn){//Only spend cycles copying menu item into RAM if we actually need to
-        if(exit_index <= cur_index){
-          strncpy_P(b,MI_EXIT,sizeof(b));
-        }
-        else{
-          MenuItem_t mi = {"",nullptr};
-          memcpy_P(&mi,&menu_items[cur_index+1],sizeof(mi));//The 0th element in the array is the title, so offset by 1
-          strncpy_P(b,mi.ItemName,sizeof(b));
-        }
-        morseText(b);
+  else if(ButtonPress_e::NotPressed != touch_button){
+    const Button* button = findPressedButton(setupMenuButtons,(uint8_t)num_items,touch_point);
+    if(nullptr != button){
+      uint8_t index = 0;
+      while(setupMenuButtons[index] != button){
+        ++index;
       }
+      setSetupMenuSelection(index);
+      button->select();
+    }
+  }
+  else if(0 != knob){
+    const uint8_t old_index = setupMenuSelectedButton();
+    setupMenuSelector = LIMIT(setupMenuSelector + knob,
+                              0,
+                              (int16_t)(num_items*MENU_KNOB_COUNTS_PER_ITEM - 1));
+    const uint8_t new_index = setupMenuSelectedButton();
+    if(old_index != new_index){
+      drawSetupMenuButton(old_index);
+      drawSetupMenuButton(new_index);
+      playSetupMenuSelection(new_index);
     }
   }
 
-  return MenuReturn_e::StillActive;
+  return setupMenuExitSelected ? MenuReturn_e::ExitedRedraw : MenuReturn_e::StillActive;
 }
