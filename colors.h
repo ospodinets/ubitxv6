@@ -18,3 +18,9 @@ static const uint16_t DISPLAY_WHITE       = 0xFFFF;  ///< 255, 255, 255
 static const uint16_t DISPLAY_ORANGE      = 0xFD20;  ///< 255, 165,   0
 static const uint16_t DISPLAY_GREENYELLOW = 0xAFE5;  ///< 173, 255,  41
 static const uint16_t DISPLAY_PINK        = 0xFC18;  ///< 255, 130, 198
+
+static const char ICON_STAR = 0x1;
+static const char ICON_SETTINGS = 0x2;
+static const char ICON_NUMPAD = 0x3;
+static const char ICON_LSB = 0x4;
+static const char ICON_USB = 0x5;

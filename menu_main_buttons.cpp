@@ -185,7 +185,7 @@ Style styleSSBactive = {
     COLOR_ACTIVE_BACKGROUND,
     COLOR_ACTIVE_BORDER,
     TextJustification_e::Center,
-    FontFamily_e::SmallTitles,
+    FontFamily_e::Icons,
     1
   };
 
@@ -194,7 +194,7 @@ Style styleSSBInactive = {
     COLOR_INACTIVE_BACKGROUND,
     COLOR_INACTIVE_BORDER,
     TextJustification_e::Center,
-    FontFamily_e::SmallTitles,
+    FontFamily_e::Icons,
     1
   };
 
@@ -351,7 +351,7 @@ static Button bQuickList = {
   &styleIconicActive
 };
 
-constexpr char txtMenu [] PROGMEM = "\x02";//gear icon
+constexpr char txtMenu [] PROGMEM = "\x02";//options icon
 ButtonStatus_e bsIgnore();
 void osMenu();
 static Button bMenu = {
@@ -542,22 +542,20 @@ void toBand(char* text_out, const uint16_t max_text_size)
 
 void toSSB(char* text_out, const uint16_t max_text_size)
 {
-  if (max_text_size < 4)
+  if (max_text_size < 2)
   {
     return; // Can't do much with that space
   }
 
   if (VFO_MODE_USB == GetActiveVfoMode())
   {
-    strncpy_P(text_out, PSTR("USB"), max_text_size);
+    text_out[0] = ICON_USB;
+    text_out[1] = '\0';
   }
   else if (VFO_MODE_LSB == GetActiveVfoMode())
   {
-    strncpy_P(text_out, PSTR("LSB"), max_text_size);
-  }
-  else
-  {
-    strncpy_P(text_out, PSTR("???"), max_text_size);
+    text_out[0] = ICON_LSB;
+    text_out[1] = '\0';
   }
 }
 

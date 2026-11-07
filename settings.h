@@ -14,7 +14,7 @@
 
 #include <stdint.h>//uint8_t etc.
 
-static const uint8_t NUM_QUICKLIST_SETTINGS = 4;
+static const uint8_t NUM_QUICKLIST_SETTINGS = 6;
 
 /*
  * Loads default values for all settings
@@ -81,7 +81,7 @@ struct SettingsRam
   VfoSettings_t vfoA;
   VfoSettings_t vfoB;
 
-  VfoSettings_t quickList[4];
+  VfoSettings_t quickList[NUM_QUICKLIST_SETTINGS];
 
   KeyerMode_e keyerMode;
   uint32_t cwSideToneFreq;
