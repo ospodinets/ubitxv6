@@ -82,10 +82,7 @@ static TextPlacement getTextPlacement(const char *text, int x, int y, int w, int
     x += 2;
   }
 
-  const uint8_t yAdvance = (activeFont != nullptr)
-    ? pgm_read_byte(&activeFont->yAdvance)
-    : 8;
-  y += (yAdvance + h - static_cast<int32_t>(boundsHeight)) / 2;
+  y += (h - static_cast<int32_t>(boundsHeight)) / 2 - (boundsY - y);
   return {x, y};
 }
 
