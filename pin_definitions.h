@@ -32,7 +32,7 @@ static const uint32_t PIN_ENC_B           = PB5;   // Tuning encoder interface (
 static const uint32_t PIN_ENC_PUSH_BUTTON = PB3;   // Tuning encoder push button
 static const uint32_t PIN_PTT             = PA15;  // Sense it for ssb and as a straight key for cw operation
 static const uint32_t PIN_ANALOG_KEYER    = PA1;   // Analog keyer (ADC1_IN1). 3.3 V max! Details: www.hfsignals.com
-static const uint32_t PIN_ANALOG_SPARE    = PA2;   // Not used yet (ADC1_IN2)
+static const uint32_t PIN_ANALOG_SMETER   = PA2;   // S-meter input (ADC1_IN2)
 
 // ---- I2C1 (Si5351) ----
 // PB7 is I2C1 SDA

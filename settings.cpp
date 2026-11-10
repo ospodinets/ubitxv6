@@ -91,6 +91,7 @@ void LoadDefaultSettings()
   globalSettings.txActive = false;
   globalSettings.cwExpirationTimeMs = 0;
   globalSettings.morseMenuOn = false;
+  globalSettings.sMeterValue = 0;
 }
 
 void LoadSettingsFromEeprom()

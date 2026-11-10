@@ -103,6 +103,9 @@ struct SettingsRam
   bool txActive;
   uint32_t cwExpirationTimeMs;
   bool morseMenuOn;
+
+  // Runtime S-meter scale: 0 = no signal, 1-9 = S1-S9, 10-15 = S9+10 to +60 dB.
+  uint8_t sMeterValue;
 };
 
 //This is the shared declaration

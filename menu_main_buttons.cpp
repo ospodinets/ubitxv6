@@ -16,9 +16,11 @@
 #include "menu_quicklist.h"
 #include "morse.h"
 #include "nano_gui.h"
+#include "pin_definitions.h"
 #include "scratch_space.h"
 #include "settings.h"
 #include "setup.h"
+#include "string.h"
 #include "tuner.h"
 #include "utils.h"
 #include "version.h"
@@ -34,7 +36,7 @@ static const unsigned int LAYOUT_CALLSIGN_TEXT_HEIGHT = 30;
 static const unsigned int LAYOUT_VBAT_TEXT_X = 160;
 static const unsigned int LAYOUT_VBAT_TEXT_Y = 3;
 static const unsigned int LAYOUT_VBAT_TEXT_WIDTH = 160;
-static const unsigned int LAYOUT_VBAT_TEXT_HEIGHT = 30;
+static const unsigned int LAYOUT_VBAT_TEXT_HEIGHT = 24;
 
 static const unsigned int LAYOUT_TX_X = 3;
 static const unsigned int LAYOUT_TX_Y = LAYOUT_VBAT_TEXT_Y + LAYOUT_VBAT_TEXT_HEIGHT + 6;
@@ -63,7 +65,7 @@ static const unsigned int LAYOUT_VFO_SEC_HEIGHT = 36;
 
 // Buttons
 static const unsigned int LAYOUT_BUTTON_X = 0;
-static const unsigned int LAYOUT_BUTTON_Y = LAYOUT_VFO_SEC_Y + LAYOUT_VFO_SEC_HEIGHT + 15;
+static const unsigned int LAYOUT_BUTTON_Y = LAYOUT_VFO_SEC_Y + LAYOUT_VFO_SEC_HEIGHT + 6;
 static const unsigned int LAYOUT_BUTTON_WIDTH = 60;
 static const unsigned int LAYOUT_BUTTON_HEIGHT = 36;
 static const unsigned int LAYOUT_BUTTON_HSPACING = 3;
@@ -71,13 +73,42 @@ static const unsigned int LAYOUT_BUTTON_VSPACING = 3;
 static const unsigned int LAYOUT_BUTTON_HPITCH = LAYOUT_BUTTON_WIDTH + LAYOUT_BUTTON_HSPACING;
 static const unsigned int LAYOUT_BUTTON_VPITCH = LAYOUT_BUTTON_HEIGHT + LAYOUT_BUTTON_VSPACING;
 
+static const unsigned int LAYOUT_SMETER_X = 3;
+static const unsigned int LAYOUT_SMETER_Y =  LAYOUT_BUTTON_Y + 2*LAYOUT_BUTTON_VPITCH + 3;
+static const unsigned int LAYOUT_SMETER_WIDTH = DISPLAY_WIDTH - 6;
+static const unsigned int LAYOUT_SMETER_HEIGHT = 24;
 
-static const unsigned int LAYOUT_VERSION_TEXT_X = DISPLAY_WIDTH - DISPLAY_WIDTH/2;
-static const unsigned int LAYOUT_VERSION_TEXT_Y = DISPLAY_HEIGHT - 6;
-static const unsigned int LAYOUT_VERSION_TEXT_WIDTH = DISPLAY_WIDTH/2;
-static const unsigned int LAYOUT_VERSION_TEXT_HEIGHT = 6;
+static const uint8_t SMETER_MAX_VALUE = 15;
+static const uint16_t SMETER_ADC_MAX = 1023;
+static const uint16_t SMETER_REFRESH_INTERVAL_MS = 100;
+static const unsigned int SMETER_SEGMENT_GAP = 2;
+static const unsigned int SMETER_SEGMENT_WIDTH =
+    (LAYOUT_SMETER_WIDTH - (SMETER_MAX_VALUE - 1) * SMETER_SEGMENT_GAP) / SMETER_MAX_VALUE;
+static const unsigned int SMETER_TOTAL_WIDTH =
+    SMETER_MAX_VALUE * SMETER_SEGMENT_WIDTH + (SMETER_MAX_VALUE - 1) * SMETER_SEGMENT_GAP;
+static const unsigned int SMETER_START_X =
+    LAYOUT_SMETER_X + (LAYOUT_SMETER_WIDTH - SMETER_TOTAL_WIDTH) / 2;
+static const unsigned int SMETER_BAR_Y = LAYOUT_SMETER_Y + 15;
+static const unsigned int SMETER_BAR_HEIGHT = LAYOUT_SMETER_HEIGHT - 9;
 
 int16_t LAYOUT_PAGE_Y = LAYOUT_VFO_SEC_Y;
+
+void drawVBat()
+{
+  // get battery voltage
+  float vbat = 12.1f;//getBatteryVoltage();
+  // convert to string with 2 decimal places
+  dtostrf(vbat, 4, 2, b);
+  strncat_P(b,(const char*)F(" V"),sizeof(b)-strlen(b));
+  Style style;
+  style.textColor = COLOR_VERSION_TEXT;
+  style.backgroundColor = COLOR_BACKGROUND;
+  style.borderColor = COLOR_BACKGROUND;
+  style.justification = TextJustification_e::Right;
+  style.fontFamily = FontFamily_e::Regular;
+  style.fontSize = 1;
+  displayText(b, LAYOUT_VBAT_TEXT_X, LAYOUT_VBAT_TEXT_Y, LAYOUT_VBAT_TEXT_WIDTH, LAYOUT_VBAT_TEXT_HEIGHT, style); 
+}
 
 void drawTx()
 {
@@ -96,19 +127,6 @@ void drawTx()
   else{
     displayFillrect(LAYOUT_TX_X,LAYOUT_TX_Y,LAYOUT_TX_WIDTH,LAYOUT_TX_HEIGHT,COLOR_BACKGROUND);
   }
-}
-
-void drawVersion()
-{
-  strncpy_P(b, VERSION_STRING, sizeof(b));
-  Style style;
-  style.textColor = COLOR_VERSION_TEXT;
-  style.backgroundColor = COLOR_BACKGROUND;
-  style.borderColor = COLOR_BACKGROUND;
-  style.justification = TextJustification_e::Right;
-  style.fontFamily = FontFamily_e::SmallTitles;
-  style.fontSize = 1;
-  displayText(b, LAYOUT_VERSION_TEXT_X, LAYOUT_VERSION_TEXT_Y, LAYOUT_VERSION_TEXT_WIDTH, LAYOUT_VERSION_TEXT_HEIGHT, style);
 }
 
 void drawCallsign()
@@ -497,6 +515,21 @@ void updateSidebandButton()
   bSSB.draw();
 }
 
+void updateRitButton()
+{
+  bRit.draw();
+}
+
+void updateCWButton()
+{
+  bCw.draw();
+}
+
+void updateSplitButton()
+{
+  bSpl.draw();
+}
+
 void toVfoMain(char* text_out, const uint16_t max_text_size)
 {
   if (max_text_size < 2)
@@ -641,4 +674,108 @@ void osMenu(){
 
 void osNumpad(){
   enterSubmenu(numpadMenu);
+}
+
+Style styleSMeter = {
+    DISPLAY_WHITE,
+    COLOR_BACKGROUND,
+    COLOR_BACKGROUND,
+    TextJustification_e::Center,
+    FontFamily_e::SmallTitles,
+    1
+  };
+
+void drawSMeter()
+{
+  for (uint8_t i = 0; i < SMETER_MAX_VALUE; ++i)
+  {
+    char label[4];
+
+    if( i % 3 == 0)
+    {
+      if (i < 9)
+      {
+        label[0] = 'S';
+        label[1] = '1' + i;
+        label[2] = '\0';
+      }
+      else
+      {
+        const uint8_t db = (i - 8) * 10;
+        label[0] = '+';
+        label[1] = '0' + db / 10;
+        label[2] = '0';
+        label[3] = '\0';
+      }
+
+    }
+    else
+    {
+      label[0] = '\0';
+    }
+
+    const unsigned int x = SMETER_START_X +
+        i * (SMETER_SEGMENT_WIDTH + SMETER_SEGMENT_GAP);
+    const unsigned int label_width = strlen(label) * 6;
+    const unsigned int label_x = x + (SMETER_SEGMENT_WIDTH - label_width) / 2;
+
+    displayText(label, label_x, LAYOUT_SMETER_Y, SMETER_SEGMENT_WIDTH, 9, styleSMeter);
+  }
+
+  updateSMeterIncremental(globalSettings.sMeterValue, 0);
+}
+
+void updateSMeterIncremental(const int16_t smeter_value, const int16_t smeter_squelch)
+{
+  const uint8_t value = smeter_value < 0 ? 0 :
+      (smeter_value > SMETER_MAX_VALUE ? SMETER_MAX_VALUE : static_cast<uint8_t>(smeter_value));
+  const uint8_t squelch = smeter_squelch < 0 ? 0 :
+      (smeter_squelch > SMETER_MAX_VALUE ? SMETER_MAX_VALUE : static_cast<uint8_t>(smeter_squelch));
+
+  static int16_t previous_value = -1;
+  static int16_t previous_squelch = -1;
+  static uint32_t previous_generation = UINT32_MAX;
+  const uint32_t generation = displayGeneration();
+  const bool redraw_all = generation != previous_generation;
+
+  for (uint8_t i = 0; i < SMETER_MAX_VALUE; ++i)
+  {
+    const bool was_filled = previous_value >= static_cast<int16_t>(i + 1);
+    const bool is_filled = value >= i + 1;
+    const bool was_squelch = previous_squelch == static_cast<int16_t>(i + 1);
+    const bool is_squelch = squelch == i + 1;
+    if (redraw_all || (was_filled != is_filled) || (was_squelch != is_squelch))
+    {
+      const unsigned int x = SMETER_START_X +
+          i * (SMETER_SEGMENT_WIDTH + SMETER_SEGMENT_GAP);
+      const uint16_t fill_color = i < 9 ? DISPLAY_GREEN : (i < 13 ? DISPLAY_ORANGE : DISPLAY_RED);
+      displayFillrect(x + 1, SMETER_BAR_Y + 1, SMETER_SEGMENT_WIDTH - 2,
+                      SMETER_BAR_HEIGHT - 2, is_filled ? fill_color : COLOR_BACKGROUND);
+      displayRect(x, SMETER_BAR_Y, SMETER_SEGMENT_WIDTH, SMETER_BAR_HEIGHT,
+                  is_squelch ? DISPLAY_WHITE : DISPLAY_DARKGREY);
+    }
+  }
+
+  previous_value = value;
+  previous_squelch = squelch;
+  previous_generation = generation;
+}
+
+void updateSMeterFromInput()
+{
+  static uint32_t last_sample_ms = 0;
+  const uint32_t now = millis();
+  if (static_cast<uint32_t>(now - last_sample_ms) < SMETER_REFRESH_INTERVAL_MS)
+  {
+    return;
+  }
+  last_sample_ms = now;
+
+  const uint16_t adc_value = analogRead(PIN_ANALOG_SMETER);
+  const uint16_t bounded_adc = adc_value > SMETER_ADC_MAX ? SMETER_ADC_MAX : adc_value;
+  // Provisional linear conversion; replace with calibrated thresholds as needed.
+  globalSettings.sMeterValue = static_cast<uint8_t>(
+      (static_cast<uint32_t>(bounded_adc) * SMETER_MAX_VALUE + SMETER_ADC_MAX / 2) /
+      SMETER_ADC_MAX);
+  updateSMeterIncremental(globalSettings.sMeterValue, 0);
 }

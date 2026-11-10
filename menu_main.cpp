@@ -33,16 +33,15 @@ static constexpr int32_t MAIN_TUNING_STEP_HZ = 50;
 void drawMainMenu(void)
 {
   displayClear(COLOR_BACKGROUND);
+  drawCallsign();
+  drawVBat();
   invalidateVfo();
+  drawVfo();
   for(uint8_t i = 0; i < MAIN_MENU_NUM_BUTTONS; ++i){
     mainMenuButtons[i]->draw();
   }
-  drawVfo();
-  drawVersion();
-  drawCallsign();
   drawBand();
-  ltoa(GetActiveVfoFreq(),b,10);
-  morseText(b);
+  drawSMeter();
 }
 
 void drawMainMenuIncrement()
@@ -74,17 +73,17 @@ void drawMainMenuIncrement()
 
   if(last_split != globalSettings.splitOn){
     drawVfo();
-    bSpl.draw();
+    updateSplitButton();
     last_split = globalSettings.splitOn;
   }
 
   if(last_rit != globalSettings.ritOn){
-    bRit.draw();
+    updateRitButton();
     last_rit = globalSettings.ritOn;
   }
 
   if(last_tuning != globalSettings.tuningMode){
-    bCw.draw();
+    updateCWButton();
     last_tuning = globalSettings.tuningMode;
   }
 }
@@ -179,6 +178,10 @@ MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
     }
   }
 
+  if (nullptr == rootMenu->active_submenu)
+  {
+    updateSMeterFromInput();
+  }
   drawMainMenuIncrement();
 
   return MenuReturn_e::StillActive;//main menu always returns StillActive
