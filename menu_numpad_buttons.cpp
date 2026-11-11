@@ -34,7 +34,7 @@ ButtonPress_e numpadSelectionMode;
           void os##number();\
           static Button b##number = {\
             LAYOUT_BUTTON_X + x*LAYOUT_BUTTON_PITCH_X,\
-            LAYOUT_BUTTON_Y + y*LAYOUT_BUTTON_PITCH_Y,\
+            static_cast<int16_t>(LAYOUT_BUTTON_Y + y*LAYOUT_BUTTON_PITCH_Y),\
             LAYOUT_BUTTON_WIDTH,\
             LAYOUT_BUTTON_HEIGHT,\
             txt##number,\
@@ -67,7 +67,7 @@ constexpr char txtOk [] PROGMEM = "OK";
 void osOk();
 static Button bOk = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_PITCH_X,
-  LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_PITCH_Y,
+  static_cast<int16_t>(LAYOUT_BUTTON_Y + 0*LAYOUT_BUTTON_PITCH_Y),
   LAYOUT_BUTTON_WIDTH,
   LAYOUT_BUTTON_HEIGHT,
   txtOk,
@@ -81,7 +81,7 @@ constexpr char txtBackspace [] PROGMEM = "<-";
 void osBackspace();
 static Button bBackspace = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_PITCH_X,
-  LAYOUT_BUTTON_Y + 1*LAYOUT_BUTTON_PITCH_Y,
+  static_cast<int16_t>(LAYOUT_BUTTON_Y + 1*LAYOUT_BUTTON_PITCH_Y),
   LAYOUT_BUTTON_WIDTH,
   LAYOUT_BUTTON_HEIGHT,
   txtBackspace,
@@ -95,7 +95,7 @@ constexpr char txtCancel [] PROGMEM = "Can";
 void osCancel();
 static Button bCancel = {
   LAYOUT_BUTTON_X + 4*LAYOUT_BUTTON_PITCH_X,
-  LAYOUT_BUTTON_Y + 2*LAYOUT_BUTTON_PITCH_Y,
+  static_cast<int16_t>(LAYOUT_BUTTON_Y + 2*LAYOUT_BUTTON_PITCH_Y),
   LAYOUT_BUTTON_WIDTH,
   LAYOUT_BUTTON_HEIGHT,
   txtCancel,

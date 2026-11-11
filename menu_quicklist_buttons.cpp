@@ -25,7 +25,7 @@ ButtonPress_e quickListSelectionMode;
           void osQL##number();\
           static Button bQL##number = {\
             LAYOUT_BUTTON_X + idX*LAYOUT_BUTTON_PITCH_X,\
-            LAYOUT_BUTTON_Y + idY*LAYOUT_BUTTON_PITCH_Y,\
+            static_cast<int16_t>(LAYOUT_BUTTON_Y + idY*LAYOUT_BUTTON_PITCH_Y),\
             LAYOUT_BUTTON_WIDTH,\
             LAYOUT_BUTTON_HEIGHT,\
             nullptr,\
@@ -50,7 +50,7 @@ QUICKLIST_BUTTON_GENERATE(1, 2, 5);
 void osQLCancel();
 static Button bQLCancel = {
   3,
-  LAYOUT_BUTTON_Y + 3 * LAYOUT_BUTTON_PITCH_Y,
+  static_cast<int16_t>(LAYOUT_BUTTON_Y + 3 * LAYOUT_BUTTON_PITCH_Y),
   320 - 6,
   LAYOUT_BUTTON_HEIGHT,
   "Cancel",
