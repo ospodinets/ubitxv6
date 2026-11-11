@@ -79,8 +79,8 @@ static const unsigned int LAYOUT_SMETER_WIDTH = DISPLAY_WIDTH - 6;
 static const unsigned int LAYOUT_SMETER_HEIGHT = 24;
 
 static const uint8_t SMETER_MAX_VALUE = 15;
-static const uint16_t SMETER_ADC_MAX = 1023;
-static const uint16_t SMETER_REFRESH_INTERVAL_MS = 100;
+
+
 static const unsigned int SMETER_SEGMENT_GAP = 2;
 static const unsigned int SMETER_SEGMENT_WIDTH =
     (LAYOUT_SMETER_WIDTH - (SMETER_MAX_VALUE - 1) * SMETER_SEGMENT_GAP) / SMETER_MAX_VALUE;
@@ -680,7 +680,7 @@ Style styleSMeter = {
     DISPLAY_WHITE,
     COLOR_BACKGROUND,
     COLOR_BACKGROUND,
-    TextJustification_e::Center,
+    TextJustification_e::Left,
     FontFamily_e::SmallTitles,
     1
   };
@@ -691,23 +691,30 @@ void drawSMeter()
   {
     char label[4];
 
-    if( i % 3 == 0)
+    if( i % 2 == 0)
     {
+
       if (i < 9)
       {
-        label[0] = 'S';
-        label[1] = '1' + i;
-        label[2] = '\0';
+        if( i == 0 )
+        {
+          label[0] = 'S';
+          label[1] = '1' + i;
+          label[2] = '\0';
+        }
+        else
+        {
+          label[0] = '1' + i;
+          label[1] = '\0';
+        }
       }
       else
       {
         const uint8_t db = (i - 8) * 10;
-        label[0] = '+';
-        label[1] = '0' + db / 10;
-        label[2] = '0';
-        label[3] = '\0';
+        label[0] = '0' + db / 10;
+        label[1] = '0';
+        label[2] = '\0';
       }
-
     }
     else
     {
@@ -722,18 +729,16 @@ void drawSMeter()
     displayText(label, label_x, LAYOUT_SMETER_Y, SMETER_SEGMENT_WIDTH, 9, styleSMeter);
   }
 
-  updateSMeterIncremental(globalSettings.sMeterValue, 0);
+  drawSMeterIncremental();
 }
 
-void updateSMeterIncremental(const int16_t smeter_value, const int16_t smeter_squelch)
+void drawSMeterIncremental()
 {
+  auto smeter_value = globalSettings.sMeterValue;
   const uint8_t value = smeter_value < 0 ? 0 :
       (smeter_value > SMETER_MAX_VALUE ? SMETER_MAX_VALUE : static_cast<uint8_t>(smeter_value));
-  const uint8_t squelch = smeter_squelch < 0 ? 0 :
-      (smeter_squelch > SMETER_MAX_VALUE ? SMETER_MAX_VALUE : static_cast<uint8_t>(smeter_squelch));
 
   static int16_t previous_value = -1;
-  static int16_t previous_squelch = -1;
   static uint32_t previous_generation = UINT32_MAX;
   const uint32_t generation = displayGeneration();
   const bool redraw_all = generation != previous_generation;
@@ -742,40 +747,27 @@ void updateSMeterIncremental(const int16_t smeter_value, const int16_t smeter_sq
   {
     const bool was_filled = previous_value >= static_cast<int16_t>(i + 1);
     const bool is_filled = value >= i + 1;
-    const bool was_squelch = previous_squelch == static_cast<int16_t>(i + 1);
-    const bool is_squelch = squelch == i + 1;
-    if (redraw_all || (was_filled != is_filled) || (was_squelch != is_squelch))
+    if (redraw_all || (was_filled != is_filled) )
     {
-      const unsigned int x = SMETER_START_X +
+      unsigned int x = SMETER_START_X +
           i * (SMETER_SEGMENT_WIDTH + SMETER_SEGMENT_GAP);
+      unsigned int y = SMETER_BAR_Y;
+      unsigned int w = SMETER_SEGMENT_WIDTH;
+      unsigned int h = SMETER_BAR_HEIGHT;
+
+      // make the other marks a bit smaller
+      if( i > 0 && i < 9 )
+      {
+        x += 10;
+        w -= 10;
+      }
+
       const uint16_t fill_color = i < 9 ? DISPLAY_GREEN : (i < 13 ? DISPLAY_ORANGE : DISPLAY_RED);
-      displayFillrect(x + 1, SMETER_BAR_Y + 1, SMETER_SEGMENT_WIDTH - 2,
-                      SMETER_BAR_HEIGHT - 2, is_filled ? fill_color : COLOR_BACKGROUND);
-      displayRect(x, SMETER_BAR_Y, SMETER_SEGMENT_WIDTH, SMETER_BAR_HEIGHT,
-                  is_squelch ? DISPLAY_WHITE : DISPLAY_DARKGREY);
+      displayFillrect(x + 1, y + 1, w - 2, h - 2, is_filled ? fill_color : COLOR_BACKGROUND);
+      displayRect(x, y, w, h, DISPLAY_DARKGREY);
     }
   }
 
   previous_value = value;
-  previous_squelch = squelch;
   previous_generation = generation;
-}
-
-void updateSMeterFromInput()
-{
-  static uint32_t last_sample_ms = 0;
-  const uint32_t now = millis();
-  if (static_cast<uint32_t>(now - last_sample_ms) < SMETER_REFRESH_INTERVAL_MS)
-  {
-    return;
-  }
-  last_sample_ms = now;
-
-  const uint16_t adc_value = analogRead(PIN_ANALOG_SMETER);
-  const uint16_t bounded_adc = adc_value > SMETER_ADC_MAX ? SMETER_ADC_MAX : adc_value;
-  // Provisional linear conversion; replace with calibrated thresholds as needed.
-  globalSettings.sMeterValue = static_cast<uint8_t>(
-      (static_cast<uint32_t>(bounded_adc) * SMETER_MAX_VALUE + SMETER_ADC_MAX / 2) /
-      SMETER_ADC_MAX);
-  updateSMeterIncremental(globalSettings.sMeterValue, 0);
 }

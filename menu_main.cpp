@@ -12,6 +12,8 @@
 #include "settings.h"
 #include "tuner.h"//THRESHOLD_USB_LSB
 #include "utils.h"
+#include "smeter.h"
+
 
 void drawMainMenu(void);
 MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
@@ -86,6 +88,10 @@ void drawMainMenuIncrement()
     updateCWButton();
     last_tuning = globalSettings.tuningMode;
   }
+
+
+  updateSMeter();
+  drawSMeterIncremental();
 }
 
 void mainMenuTune(int16_t knob)
@@ -178,10 +184,6 @@ MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
     }
   }
 
-  if (nullptr == rootMenu->active_submenu)
-  {
-    updateSMeterFromInput();
-  }
   drawMainMenuIncrement();
 
   return MenuReturn_e::StillActive;//main menu always returns StillActive

@@ -20,5 +20,4 @@ void invalidateVfo();
 void drawBand();
 
 void drawSMeter();
-void updateSMeterIncremental(const int16_t smeter_value, const int16_t smeter_squelch);
-void updateSMeterFromInput();
+void drawSMeterIncremental();

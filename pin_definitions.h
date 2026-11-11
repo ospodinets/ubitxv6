@@ -1,5 +1,8 @@
 #pragma once
 
+#include <pins_arduino.h>
+#include <pins_arduino_analog.h>
+
 /*
  * Pin configurations for uBiTXv6 on WeAct BlackPill (STM32F411CEU6)
  * Framework: Arduino (stm32duino)
