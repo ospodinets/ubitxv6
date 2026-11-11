@@ -159,9 +159,12 @@ void loop(){
   }
 
   if(globalSettings.txActive){
+    stopCwPractice();
     //Don't run menus when transmitting
     return;
   }
+
+  updateCwPractice();
     
   ButtonPress_e tuner_button = CheckTunerButton();
   Point touch_point;

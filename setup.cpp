@@ -1,4 +1,5 @@
-#include "toneAC2/toneAC2.h"
+#include <Arduino.h>
+
 #include "colors.h"
 #include "button.h"
 #include "encoder.h"
@@ -371,13 +372,13 @@ void ssCwToneValidate(const long int candidate_value_in, long int* validated_val
 void ssCwToneChange(const long int new_value, char* buff_out, const size_t buff_out_size)
 {
   globalSettings.cwSideToneFreq = new_value;
-  toneAC2(PIN_CW_TONE, globalSettings.cwSideToneFreq);
+  startCwPractice(globalSettings.cwSideToneFreq, globalSettings.cwDitDurationMs);
   ltoa(globalSettings.cwSideToneFreq,buff_out,10);
   strncat_P(buff_out,strHz,buff_out_size - strlen(buff_out));
 }
 void ssCwToneFinalize(const long int final_value)
 {
-  noToneAC2();
+  stopCwPractice();
   globalSettings.cwSideToneFreq = final_value;
   SaveSettingsToEeprom();
 }
@@ -497,10 +498,12 @@ void ssCwSpeedValidate(const long int candidate_value_in, long int* validated_va
 void ssCwSpeedChange(const long int new_value, char* buff_out, const size_t /*buff_out_size*/)
 {
   ltoa(new_value, buff_out, 10);
+  startCwPractice(globalSettings.cwSideToneFreq, 1200L / new_value);
   enc_read();//Consume any rotations during morse playback
 }
 void ssCwSpeedFinalize(const long int final_value)
 {
+  stopCwPractice();
   globalSettings.cwDitDurationMs = 1200L/final_value;
   SaveSettingsToEeprom();
 }

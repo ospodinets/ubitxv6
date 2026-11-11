@@ -42,6 +42,64 @@ static unsigned long ktimer;
 unsigned char keyerState = IDLE;
 uint8_t keyerControl = 0;
 
+static bool cwPracticeActive = false;
+static uint8_t cwPracticeSegment = 0;
+static bool cwPracticeToneOn = false;
+static unsigned int cwPracticeFrequency = 0;
+static uint16_t cwPracticeDitDurationMs = 0;
+static unsigned long cwPracticeNextChangeMs = 0;
+
+void startCwPractice(const uint16_t frequency, const uint16_t ditDurationMs)
+{
+  if (cwPracticeActive) {
+    cwPracticeFrequency = frequency;
+    cwPracticeDitDurationMs = ditDurationMs;
+    if (cwPracticeToneOn) {
+      toneAC2(PIN_CW_TONE, cwPracticeFrequency);
+    }
+    return;
+  }
+
+  cwPracticeFrequency = frequency;
+  cwPracticeDitDurationMs = ditDurationMs;
+  cwPracticeSegment = 0;
+  cwPracticeActive = true;
+  cwPracticeToneOn = true;
+  toneAC2(PIN_CW_TONE, cwPracticeFrequency);
+  cwPracticeNextChangeMs = millis() + cwPracticeDitDurationMs;
+}
+
+void stopCwPractice()
+{
+  if (cwPracticeActive) {
+    noToneAC2();
+    cwPracticeActive = false;
+    cwPracticeToneOn = false;
+  }
+}
+
+void updateCwPractice()
+{
+  const unsigned long now = millis();
+  if (!cwPracticeActive
+      || static_cast<long>(now - cwPracticeNextChangeMs) < 0) {
+    return;
+  }
+
+  cwPracticeSegment = (cwPracticeSegment + 1) % 8;
+  cwPracticeToneOn = cwPracticeSegment % 2 == 0;
+  if (cwPracticeToneOn) {
+    toneAC2(PIN_CW_TONE, cwPracticeFrequency);
+  } else {
+    noToneAC2();
+  }
+
+  const bool characterGap = cwPracticeSegment == 7;
+  const bool dah = cwPracticeToneOn && cwPracticeSegment == 6;
+  const unsigned long durationMultiplier = characterGap || dah ? 3 : 1;
+  cwPracticeNextChangeMs = now + durationMultiplier * cwPracticeDitDurationMs;
+}
+
 struct DebouncedInput {
   int rawState;
   int stableState;
