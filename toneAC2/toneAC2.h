@@ -14,29 +14,19 @@
 // warranty, express or implied, as to its usefulness for any purpose.
 //
 // PURPOSE:
-// Replacement to the standard tone library with the advantage of nearly twice
-// the volume, 800 bytes smaller compiled code size, and less stress on the
-// speaker. This alternate version uses timer 2 and allows for flexible pin
-// assignment. The primary version (toneAC) allows for higher frequencies,
-// higher quality, and even smaller code size. However, toneAC is fixed to
-// using the PWM timer 1 pins unlike toneAC2 which can use any two pins. Both
-// exclusively use port registers for the fast and smallest code possible.
+// Compatibility wrapper for the existing toneAC2 call sites. On STM32 it
+// delegates tone generation to the stm32duino timer-backed tone() API.
 //
 // USAGE:
-// Connection is very similar to a piezo or standard speaker. Except, instead
-// of connecting one speaker wire to ground you connect both speaker wires to
-// Arduino pins. Unlike toneAC, with toneAC2 you can connect to any two pins.
-// Just as usual when connecting a speaker, make sure you add an in-line 100
-// ohm resistor between one of the pins and the speaker wire.
+// Connect the speaker or piezo between the selected output pin and ground.
 //
 // SYNTAX:
-//   toneAC2( pin1, pin2, frequency [, length [, background ]] ) - Play a note.
+//   toneAC2( pin, frequency [, length [, background ]] ) - Play a note.
 //     Parameters:
-//       * pin1       - Pin to attach one of the speaker wires.
-//       * pin2       - Pin to attach the other speaker wire.
+//       * pin        - Output pin.
 //       * frequency  - Play the specified frequency indefinitely, turn off with noToneAC2().
 //       * length     - [optional] Set the length to play in milliseconds. (default: 0 [forever], range: 0 to 2^32-1)
-//       * background - [optional] Play note in background or pause till finished? (default: false, values: true/false)
+//       * background - [optional] true plays asynchronously; false blocks until length elapses.
 //   noToneAC2()  - Stop playing.
 //
 // HISTORY:
@@ -56,18 +46,6 @@
     #include <WProgram.h>
   #endif
 
-  // This doesn't currently work. Would require more work than simply doing this.
-  #if defined(__AVR_ATmega8__) || defined(__AVR_ATmega128__)
-    #define TCCR2A TCCR2
-    #define TCCR2B TCCR2
-    #define TIMSK2 TIMSK
-    #define COM2A1 COM21
-    #define COM2A0 COM20
-    #define OCIE2A OCIE2
-    #define OCR2A OCR2
-    #define TIMER2_COMPA_vect TIMER2_COMP_vect
-  #endif
-
-  void toneAC2(uint8_t pin1, unsigned int frequency = 0, unsigned long length = 0, uint8_t background = false);
+  void toneAC2(uint8_t pin, unsigned int frequency = 0, unsigned long length = 0, uint8_t background = false);
   void noToneAC2();
 #endif
