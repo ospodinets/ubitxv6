@@ -73,7 +73,6 @@ void checkPTT(){
     
   if(digitalRead(PIN_PTT) == 0 && !globalSettings.txActive){
     startTx(TuningMode_e::TUNE_SSB);
-    delay(50); //debounce the PTT
   }
 	
   if (digitalRead(PIN_PTT) == 1 && globalSettings.txActive)
@@ -97,12 +96,10 @@ void initPorts(){
   //??
   enc_setup();
   
-  //configure the function button to use the external pull-up
-//  pinMode(PIN_ENC_PUSH_BUTTON, INPUT);
-//  digitalWrite(PIN_ENC_PUSH_BUTTON, HIGH);
-
-  pinMode(PIN_PTT, INPUT_PULLUP);
-//  pinMode(PIN_ANALOG_KEYER, INPUT_PULLUP);
+  pinMode(PIN_ENC_PUSH_BUTTON, INPUT);
+  pinMode(PIN_PTT, INPUT);
+  pinMode(PIN_KEYER_DIT, INPUT_PULLUP);
+  pinMode(PIN_KEYER_DAH, INPUT_PULLUP);
 
   pinMode(PIN_CW_TONE, OUTPUT);
   digitalWrite(PIN_CW_TONE, 0);

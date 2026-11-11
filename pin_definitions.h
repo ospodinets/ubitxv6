@@ -10,7 +10,7 @@
  * Attached devices are:
  *  * A rotary encoder for tuning, which has a built-in push button for selection
  *  * A Push-to-talk button input
- *  * A morse keyer input, using analog voltage divider for paddle support
+ *  * Morse keyer dot and dash inputs
  *  * A SI5351A 3-output frequency generator
  *  * A model tjctm24028-spi touch screen LCD, which has:
  *     * An ILI9341 display controller
@@ -21,9 +21,9 @@
  *  * A CW keydown output
  *
  * NOTES:
- *  - All GPIO used here are 3.3 V logic. Analog inputs (PA1, PA2) are NOT 5 V tolerant.
- *    If the keyer divider / pull-up is fed from 5 V, move it to 3.3 V and recalibrate
- *    the thresholds (and use analogReadResolution(12)).
+ *  - All GPIO used here are 3.3 V logic and are NOT 5 V tolerant.
+ *  - Keyer paddles are active-low digital inputs with internal pull-ups; connect each
+ *    paddle switch between its input and ground.
  *  - PA15, PB3, PB4 are JTAG pins at reset (briefly floating). Fine for inputs.
  *  - Avoid: PA0 (KEY button), PC13 (LED), PC14/PC15 (32 kHz crystal),
  *           PA11/PA12 (USB), PA13/PA14 (SWD), PB2 (BOOT1).
@@ -34,7 +34,8 @@ static const uint32_t PIN_ENC_A           = PB4;   // Tuning encoder interface (
 static const uint32_t PIN_ENC_B           = PB5;   // Tuning encoder interface (TIM3_CH2)
 static const uint32_t PIN_ENC_PUSH_BUTTON = PB3;   // Tuning encoder push button
 static const uint32_t PIN_PTT             = PA15;  // Sense it for ssb and as a straight key for cw operation
-static const uint32_t PIN_ANALOG_KEYER    = PA1;   // Analog keyer (ADC1_IN1). 3.3 V max! Details: www.hfsignals.com
+static const uint32_t PIN_KEYER_DIT       = PA1;   // Dot paddle input
+static const uint32_t PIN_KEYER_DAH       = PA3;   // Dash paddle input
 static const uint32_t PIN_ANALOG_SMETER   = PA2;   // S-meter input (ADC1_IN2)
 
 // ---- I2C1 (Si5351) ----
