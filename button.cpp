@@ -23,10 +23,9 @@ static Style defaultActiveStyle = {
 
 Button::Button(int16_t x, int16_t y, int16_t w, int16_t h,
                const char* text, LabelTextOverride_t text_override,
-               ButtonStatusCallback_t status, ButtonClickHandler_t on_select,
-               char morse, Style* inactiveStyle, Style* activeStyle)
+               ButtonStatusCallback_t status, ButtonClickHandler_t on_select, Style* inactiveStyle, Style* activeStyle)
     : Label(x, y, w, h, text, text_override, nullptr),
-      m_status(status), m_on_select(on_select), m_morse(morse),
+      m_status(status), m_on_select(on_select),
       m_inactiveStyle(inactiveStyle), m_activeStyle(activeStyle)
 {
 }

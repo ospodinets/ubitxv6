@@ -40,8 +40,7 @@ ButtonPress_e numpadSelectionMode;
             txt##number,\
             nullptr,\
             bsNumpad,\
-            os##number,\
-            '0'+number\
+            os##number\
           }
 
 ButtonStatus_e bsNumpad(void){
@@ -73,8 +72,7 @@ static Button bOk = {
   txtOk,
   nullptr,
   bsNumpad,
-  osOk,
-  'K'
+  osOk
 };
 
 constexpr char txtBackspace [] PROGMEM = "<-";
@@ -87,8 +85,7 @@ static Button bBackspace = {
   txtBackspace,
   nullptr,
   bsNumpad,
-  osBackspace,
-  'B'
+  osBackspace
 };
 
 constexpr char txtCancel [] PROGMEM = "Can";
@@ -101,8 +98,7 @@ static Button bCancel = {
   txtCancel,
   nullptr,
   bsNumpad,
-  osCancel,
-  'C'
+  osCancel
 };
 
 //Declare in menu select order, not graphical order

@@ -31,8 +31,7 @@ ButtonPress_e quickListSelectionMode;
             nullptr,\
             toQL##number,\
             bsQuickList,\
-            osQL##number,\
-            '0'+number\
+            osQL##number\
           }
 
 ButtonStatus_e bsQuickList(void){
@@ -56,8 +55,7 @@ static Button bQLCancel = {
   "Cancel",
   nullptr,
   bsQuickList,
-  osQLCancel,
-  'C'
+  osQLCancel
 };
 
 //Declare in menu select order, not graphical order

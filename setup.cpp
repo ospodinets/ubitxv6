@@ -4,7 +4,6 @@
 #include "encoder.h"
 #include "menu.h"
 #include "menu_utils.h"
-#include "morse.h"
 #include "nano_gui.h"
 #include "pin_definitions.h"
 #include "scratch_space.h"
@@ -132,14 +131,14 @@ void saveSettingValue();
 static Button settingValueButton = {
   LAYOUT_SETTING_VALUE_X, LAYOUT_SETTING_VALUE_Y,
   LAYOUT_SETTING_VALUE_WIDTH, LAYOUT_SETTING_VALUE_HEIGHT,
-  nullptr, settingValueText, settingButtonStatus, advanceSettingValue, 'N',
+  nullptr, settingValueText, settingButtonStatus, advanceSettingValue,
   &settingValueInactiveStyle, &settingValueInactiveStyle
 };
 static Button settingSaveButton = {
   LAYOUT_CONFIRM_TEXT_X, LAYOUT_CONFIRM_TEXT_Y,
   LAYOUT_CONFIRM_TEXT_WIDTH, LAYOUT_CONFIRM_TEXT_HEIGHT,
   "Push Tune to Save", nullptr,
-  settingButtonStatus, saveSettingValue, 'S',
+  settingButtonStatus, saveSettingValue,
   &settingSaveInactiveStyle, &settingSaveInactiveStyle
 };
 static const Button* const settingButtons[] = {
@@ -174,18 +173,16 @@ void initSetting()
   if(nullptr == activeSettingP){
     return;
   }
-  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr,nullptr};
-  memcpy_P(&screen,activeSettingP,sizeof(screen));
-  drawSetting(&screen);
-  screen.Initialize(&setupMenuLastValue);
+  drawSetting(activeSettingP);
+  activeSettingP->Initialize(&setupMenuLastValue);
   setupMenuSettingFinished = false;
-  screen.OnValueChange(setupMenuLastValue,b,sizeof(b));
+  activeSettingP->OnValueChange(setupMenuLastValue,b,sizeof(b));
   strncpy(setupMenuDisplayedValue,b,sizeof(setupMenuDisplayedValue));
   setupMenuDisplayedValue[sizeof(setupMenuDisplayedValue) - 1] = '\0';
   settingValueButton.invalidate();
   settingValueButton.draw();
   displayText(b, LAYOUT_SETTING_REF_VALUE_X, LAYOUT_SETTING_REF_VALUE_Y, LAYOUT_SETTING_REF_VALUE_WIDTH, LAYOUT_SETTING_REF_VALUE_HEIGHT, COLOR_SETTING_BACKGROUND, COLOR_BACKGROUND, COLOR_BACKGROUND);
-  setupMenuRawValue = setupMenuLastValue * (int32_t)screen.KnobDivider;
+  setupMenuRawValue = setupMenuLastValue * (int32_t)activeSettingP->KnobDivider;
   settingSaveButton.invalidate();
   settingSaveButton.draw();
 }
@@ -195,9 +192,7 @@ void saveSettingValue()
   if(nullptr == activeSettingP){
     return;
   }
-  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr,nullptr};
-  memcpy_P(&screen,activeSettingP,sizeof(screen));
-  screen.Finalize(setupMenuLastValue);
+  activeSettingP->Finalize(setupMenuLastValue);
   setupMenuSettingFinished = true;
 }
 
@@ -206,23 +201,21 @@ void advanceSettingValue()
   if(nullptr == activeSettingP){
     return;
   }
-  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr,nullptr};
-  memcpy_P(&screen,activeSettingP,sizeof(screen));
-
+  
   long int candidate_value;
-  if(nullptr != screen.TouchNext){
-    screen.TouchNext(setupMenuLastValue,&candidate_value);
+  if(nullptr != activeSettingP->TouchNext){
+    activeSettingP->TouchNext(setupMenuLastValue,&candidate_value);
   }
   else{
-    const long int direction = (0 > screen.StepSize) ? -1 : 1;
-    candidate_value = setupMenuLastValue + direction * abs(screen.StepSize);
+    const long int direction = (0 > activeSettingP->StepSize) ? -1 : 1;
+    candidate_value = setupMenuLastValue + direction * abs(activeSettingP->StepSize);
   }
 
   long int value = 0;
-  screen.Validate(candidate_value,&value);
+  activeSettingP->Validate(candidate_value,&value);
   if(value != setupMenuLastValue){
-    refreshSettingValue(screen,value);
-    setupMenuRawValue = value * (int32_t)screen.KnobDivider;
+    refreshSettingValue(*activeSettingP,value);
+    setupMenuRawValue = value * (int32_t)activeSettingP->KnobDivider;
   }
 }
 
@@ -234,12 +227,10 @@ MenuReturn_e runSetting(const ButtonPress_e tuner_button,
   if(nullptr == activeSettingP){
     return MenuReturn_e::ExitedRedraw;
   }
-  SettingScreen_t screen = {nullptr,nullptr,0,0,nullptr,nullptr,nullptr,nullptr,nullptr};
-  memcpy_P(&screen,activeSettingP,sizeof(screen));
 
   if(ButtonPress_e::NotPressed != tuner_button){
     //Long or short press, we do the same thing
-    screen.Finalize(setupMenuLastValue);
+    activeSettingP->Finalize(setupMenuLastValue);
     return MenuReturn_e::ExitedRedraw;
   }
 
@@ -257,19 +248,19 @@ MenuReturn_e runSetting(const ButtonPress_e tuner_button,
   }
 
   if(0 != knob){
-    setupMenuRawValue += knob * screen.StepSize;
+    setupMenuRawValue += knob * activeSettingP->StepSize;
 
-    const int32_t candidate_value = setupMenuRawValue / (int32_t)screen.KnobDivider;
+    const int32_t candidate_value = setupMenuRawValue / (int32_t)activeSettingP->KnobDivider;
     int32_t value = 0;
-    screen.Validate(candidate_value,&value);
+    activeSettingP->Validate(candidate_value,&value);
 
     //If we're going out of bounds, prevent the raw value from going too far out
     if(candidate_value != value){
-      setupMenuRawValue = value * (int32_t)screen.KnobDivider;
+      setupMenuRawValue = value * (int32_t)activeSettingP->KnobDivider;
     }
 
     if(value != setupMenuLastValue){
-      refreshSettingValue(screen,value);
+      refreshSettingValue(*activeSettingP,value);
     }
   }
 
@@ -418,8 +409,6 @@ void ssCwSwitchDelayChange(const long int new_value, char* buff_out, const size_
 {
   ltoa(new_value,buff_out,10);
   strncat_P(buff_out,(const char*)F("ms"),buff_out_size - strlen(buff_out));
-  morseText(buff_out);
-  enc_read();//Consume any rotations during morse playback
 }
 void ssCwSwitchDelayFinalize(const long int final_value)
 {
@@ -459,20 +448,15 @@ void ssKeyerTouchNext(const long int current_value, long int* next_value_out)
 }
 void ssKeyerChange(const long int new_value, char* buff_out, const size_t buff_out_size)
 {
-  char m;
   if(KeyerMode_e::KEYER_STRAIGHT == new_value){
     strncpy_P(buff_out,(const char*)F("Hand Key"),buff_out_size);
-    m = 'S';
   }
   else if(KeyerMode_e::KEYER_IAMBIC_A == new_value){
     strncpy_P(buff_out,(const char*)F("Iambic A"),buff_out_size);
-    m = 'A';
   }
   else{
     strncpy_P(buff_out,(const char*)F("Iambic B"),buff_out_size);
-    m = 'B';
   }
-  morseLetter(m);
   enc_read();//Consume any rotations during morse playback
 }
 void ssKeyerFinalize(const long int final_value)
@@ -495,52 +479,11 @@ const SettingScreen_t ssKeyer PROGMEM = {
 };
 void runKeyerSetting(){activateSetting(&ssKeyer);}
 
-//Morse menu playback
-void ssMorseMenuInitialize(long int* start_value_out)
-{
-  *start_value_out = globalSettings.morseMenuOn;
-}
-void ssMorseMenuValidate(const long int candidate_value_in, long int* validated_value_out)
-{
-  *validated_value_out = LIMIT(candidate_value_in,0,1);
-}
+
 void ssToggleTouchNext(const long int current_value, long int* next_value_out)
 {
   *next_value_out = current_value ? 0 : 1;
 }
-void ssMorseMenuChange(const long int new_value, char* buff_out, const size_t buff_out_size)
-{
-  char m;
-  if(new_value){
-    strncpy_P(buff_out,strYes,buff_out_size);
-    m = 'Y';
-  }
-  else{
-    strncpy_P(buff_out,strNo,buff_out_size);
-    m = 'N';
-  }
-  morseLetter(m);
-  enc_read();//Consume any rotations during morse playback
-}
-void ssMorseMenuFinalize(const long int final_value)
-{
-  globalSettings.morseMenuOn = final_value;
-  SaveSettingsToEeprom();
-}
-const char SS_MORSE_MENU_T [] PROGMEM = "Menu Audio";
-const char SS_MORSE_MENU_A [] PROGMEM = "Menu selections will play\nmorse code";
-const SettingScreen_t ssMorseMenu PROGMEM = {
-  SS_MORSE_MENU_T,
-  SS_MORSE_MENU_A,
-  10,
-  1,
-  ssMorseMenuInitialize,
-  ssMorseMenuValidate,
-  ssMorseMenuChange,
-  ssMorseMenuFinalize,
-  ssToggleTouchNext
-};
-void runMorseMenuSetting(){activateSetting(&ssMorseMenu);}
 
 //CW Speed
 void ssCwSpeedInitialize(long int* start_value_out)
@@ -554,7 +497,6 @@ void ssCwSpeedValidate(const long int candidate_value_in, long int* validated_va
 void ssCwSpeedChange(const long int new_value, char* buff_out, const size_t /*buff_out_size*/)
 {
   ltoa(new_value, buff_out, 10);
-  morseText(buff_out,1200L/new_value);
   enc_read();//Consume any rotations during morse playback
 }
 void ssCwSpeedFinalize(const long int final_value)
@@ -588,16 +530,12 @@ void ssResetAllValidate(const long int candidate_value_in, long int* validated_v
 }
 void ssResetAllChange(const long int new_value, char* buff_out, const size_t buff_out_size)
 {
-  char m;
   if(new_value){
     strncpy_P(buff_out,strYes,buff_out_size);
-    m = 'Y';
   }
   else{
     strncpy_P(buff_out,strNo,buff_out_size);
-    m = 'N';
   }
-  morseLetter(m);
   enc_read();//Consume any rotations during morse playback
 }
 void ssResetAllFinalize(const long int final_value)
@@ -688,7 +626,6 @@ const MenuItem_t menuItemsCw [] PROGMEM {
   {SS_CW_TONE_T,runToneSetting},
   {SS_CW_SWITCH_T,runCwSwitchDelaySetting},
   {SS_KEYER_T,runKeyerSetting},
-  {SS_MORSE_MENU_T,runMorseMenuSetting},
   {SS_CW_SPEED_T,runCwSpeedSetting},
 };
 GENERATE_MENU_T(Cw);
@@ -767,7 +704,7 @@ ButtonStatus_e setupMenuButtonStatus(uint8_t index)
     LAYOUT_ITEM_WIDTH, LAYOUT_ITEM_HEIGHT,\
     nullptr, setupMenuButtonText##index,\
     setupMenuButtonStatus##index, setupMenuButtonSelect##index,\
-    '1' + index, &setupMenuInactiveStyle, &setupMenuActiveStyle\
+    &setupMenuInactiveStyle, &setupMenuActiveStyle\
   }
 
 static Style setupMenuInactiveStyle = {
@@ -820,16 +757,6 @@ void setSetupMenuSelection(uint8_t new_index)
   drawSetupMenuButton(new_index);
 }
 
-void playSetupMenuSelection(uint8_t index)
-{
-  if(!globalSettings.morseMenuOn){
-    return;
-  }
-
-  setupMenuButtonText(index,b,sizeof(b));
-  morseText(b);
-}
-
 void initSetupMenu(const MenuItem_t* const menu_items,
                    const uint16_t num_items)
 {
@@ -875,7 +802,6 @@ MenuReturn_e runSetupMenu(const MenuItem_t* const menu_items,
     if(old_index != new_index){
       drawSetupMenuButton(old_index);
       drawSetupMenuButton(new_index);
-      playSetupMenuSelection(new_index);
     }
   }
 

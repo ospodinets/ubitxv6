@@ -2,7 +2,6 @@
 
 #include "button.h"
 #include "color_theme.h"
-#include "morse.h"
 #include "nano_gui.h"
 #include "utils.h"
 
@@ -34,43 +33,21 @@ void movePuck(const Button *const b_old,
   }
 }
 
-void playButtonMorse(const Button *const button,
-                     const MorsePlaybackType_e play_type)
-{
-  if(MorsePlaybackType_e::PlayText == play_type){
-    morseText(button->staticText());
-  }
-  else{
-    morseLetter(button->morse());
-  }
-
-  const ButtonStatus_e bs = button->getStatus();
-  if(ButtonStatus_e::Inactive == bs){
-    morseBool(false);
-  }
-  else if(ButtonStatus_e::Active == bs){
-    morseBool(true);
-  }
-}
-
 void initSelector(int16_t *const raw_select_val_in_out,
                   const Button* const* buttons,
-                  const uint8_t num_buttons,
-                  const MorsePlaybackType_e play_type)
+                  const uint8_t num_buttons)
 {
   *raw_select_val_in_out = 0;
   if(0 < num_buttons){
     const Button* button = buttons[0];
     movePuck(nullptr,button);
-    playButtonMorse(button,play_type);
   }
 }
 
 void adjustSelector(int16_t *const raw_select_val_in_out,
                     const int16_t knob,
                     const Button* const* buttons,
-                    const uint8_t num_buttons,
-                    const MorsePlaybackType_e play_type)
+                    const uint8_t num_buttons)
 {
   const uint8_t prev_select = (*raw_select_val_in_out)/MENU_KNOB_COUNTS_PER_ITEM;
   *raw_select_val_in_out = LIMIT((*raw_select_val_in_out)+knob,0,num_buttons*MENU_KNOB_COUNTS_PER_ITEM - 1);
@@ -80,7 +57,6 @@ void adjustSelector(int16_t *const raw_select_val_in_out,
     const Button* new_button = buttons[new_select];
 
     movePuck(prev_button,new_button);
-    playButtonMorse(new_button,play_type);
   }
 }
 

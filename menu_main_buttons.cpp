@@ -14,7 +14,6 @@
 #include "menu_main.h"
 #include "menu_numpad.h"
 #include "menu_quicklist.h"
-#include "morse.h"
 #include "nano_gui.h"
 #include "pin_definitions.h"
 #include "scratch_space.h"
@@ -229,7 +228,6 @@ static Button bSSB = {
   toSSB,
   bsIgnore,
   osSSB,
-  'S',
   &styleSSBInactive,
   &styleSSBactive
 };
@@ -255,7 +253,6 @@ static Button bVfoSec = {
   toVfoSec,
   bsVfoSec,
   osVfoSec,
-  'B',
   &styleVfoSec,
   &styleVfoSec
 };
@@ -271,8 +268,7 @@ Button bSpl = {
   txtSpl,
   nullptr,
   bsSpl,
-  osSpl,
-  'S'
+  osSpl
 };
 
 constexpr char txtRit [] PROGMEM = "RIT";
@@ -286,8 +282,7 @@ Button bRit = {
   txtRit,
   nullptr,
   bsRit,
-  osRit,
-  'R'
+  osRit
 };
 
 constexpr char txtCw [] PROGMEM = "CW";
@@ -301,8 +296,7 @@ Button bCw = {
   txtCw,
   nullptr,
   bsCw,
-  osCw,
-  'C'
+  osCw
 };
 
 constexpr char txtUp [] PROGMEM = "UP";
@@ -316,8 +310,7 @@ static Button bUp = {
   txtUp,
   nullptr,
   bsIgnore,
-  osUp,
-  'U'
+  osUp
 };
 
 constexpr char txtDown [] PROGMEM = "DN";
@@ -331,8 +324,7 @@ static Button bDown = {
   txtDown,
   nullptr,
   bsIgnore,
-  osDown,
-  'D'
+  osDown
 };
 
 Style styleIconicActive = {
@@ -364,7 +356,6 @@ static Button bQuickList = {
   nullptr,
   bsIgnore,
   osQuickList,
-  'Q',
   &styleIconicInactive,
   &styleIconicActive
 };
@@ -381,7 +372,6 @@ static Button bMenu = {
   nullptr,
   bsIgnore,
   osMenu,
-  'M',
   &styleIconicInactive,
   &styleIconicActive
 };
@@ -398,7 +388,6 @@ static Button bNumpad = {
   nullptr,
   bsIgnore,
   osNumpad,
-  'F',
   &styleIconicInactive,
   &styleIconicActive
 };
@@ -481,7 +470,6 @@ void osVfoSec()
   SaveSettingsToEeprom();
 
   ltoa(GetActiveVfoFreq(), b, 10);
-  morseText(b);
 
   bVfoSec.draw();
   drawVfo();

@@ -8,19 +8,13 @@ const Button* findPressedButton(const Button* const* buttons,
                                 const uint8_t num_buttons,
                                 const Point touch_point);
 
-enum MorsePlaybackType_e : uint8_t {
-  PlayChar,
-  PlayText
-};
 void initSelector(int16_t *const raw_select_val_in_out,
                   const Button* const* buttons,
-                  const uint8_t num_buttons,
-                  const MorsePlaybackType_e);
+                  const uint8_t num_buttons);
 
 void adjustSelector(int16_t *const raw_select_val_in_out,
                     int16_t knob,
                     const Button* const* buttons,
-                    const uint8_t num_buttons,
-                    const MorsePlaybackType_e);
+                    const uint8_t num_buttons);
 
 void endSelector(const Button *const button);

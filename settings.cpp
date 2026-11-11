@@ -21,7 +21,6 @@ static const uint16_t EEPROM_ADDR_TOUCH_SLOPE_X  = 32;//int16_t
 static const uint16_t EEPROM_ADDR_TOUCH_SLOPE_Y  = 36;//int16_t
 static const uint16_t EEPROM_ADDR_TOUCH_OFFSET_X  = 40;//int16_t
 static const uint16_t EEPROM_ADDR_TOUCH_OFFSET_Y  = 44;//int16_t
-static const uint16_t EEPROM_ADDR_MORSE_MENU = 46;//uint8_t
 static const uint16_t EEPROM_ADDR_CW_DELAYTIME  = 48;//uint16_t
 static const uint16_t EEPROM_ADDR_VFO_A_MODE = 256;//uint8_t
 static const uint16_t EEPROM_ADDR_VFO_B_MODE = 257;//uint8_t
@@ -90,7 +89,6 @@ void LoadDefaultSettings()
 
   globalSettings.txActive = false;
   globalSettings.cwExpirationTimeMs = 0;
-  globalSettings.morseMenuOn = false;
   globalSettings.sMeterValue = 0;
 }
 
@@ -107,10 +105,6 @@ void LoadSettingsFromEeprom()
   LoadSane(globalSettings.vfoA.mode,EEPROM_ADDR_VFO_A_MODE,VFO_MODE_LSB,VFO_MODE_USB);
   LoadSane(globalSettings.vfoB.mode,EEPROM_ADDR_VFO_B_MODE,VFO_MODE_LSB,VFO_MODE_USB);
   LoadSane(globalSettings.keyerMode,EEPROM_ADDR_CW_KEY_TYPE,KEYER_STRAIGHT,KEYER_IAMBIC_B);
-
-  uint8_t morse_on = 0;
-  LoadSane(morse_on,EEPROM_ADDR_MORSE_MENU,static_cast<uint8_t>(0),static_cast<uint8_t>(1));
-  globalSettings.morseMenuOn = morse_on;
 
   for(uint8_t i = 0; i < NUM_QUICKLIST_SETTINGS; ++i){
     LoadSane(globalSettings.quickList[i].frequency,EEPROM_ADDR_QUICKLIST_FREQ+(sizeof(uint32_t)*i),SI5351_MIN_FREQUENCY_HZ,SI5351_MAX_FREQUENCY_HZ);
@@ -142,7 +136,6 @@ void SaveSettingsToEeprom()
   EEPROM.put(EEPROM_ADDR_VFO_A_MODE,globalSettings.vfoA.mode);
   EEPROM.put(EEPROM_ADDR_VFO_B_MODE,globalSettings.vfoB.mode);
   EEPROM.put(EEPROM_ADDR_CW_KEY_TYPE,globalSettings.keyerMode);
-  EEPROM.put(EEPROM_ADDR_MORSE_MENU,(uint8_t)globalSettings.morseMenuOn);
 
   for(uint8_t i = 0; i < NUM_QUICKLIST_SETTINGS; ++i){
     EEPROM.put(EEPROM_ADDR_QUICKLIST_FREQ+(sizeof(uint32_t)*i),globalSettings.quickList[i].frequency);

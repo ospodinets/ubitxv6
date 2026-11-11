@@ -6,9 +6,7 @@
 #include "button.h"
 #include "color_theme.h"
 #include "menu_utils.h"
-#include "morse.h"
 #include "nano_gui.h"
-#include "scratch_space.h"
 #include "settings.h"
 #include "tuner.h"//THRESHOLD_USB_LSB
 #include "utils.h"
@@ -133,8 +131,7 @@ MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
         else{
           initSelector(&mainMenuSelectedItemRaw,
                        mainMenuButtons,
-                       MAIN_MENU_NUM_BUTTONS,
-                       MorsePlaybackType_e::PlayChar);
+                       MAIN_MENU_NUM_BUTTONS);
         }
         mainMenuSelecting = !mainMenuSelecting;
 
@@ -144,14 +141,6 @@ MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
       }
       case ButtonPress_e::LongPress:
       {
-        if(!globalSettings.morseMenuOn){
-            globalSettings.morseMenuOn = true;//set before playing
-            morseLetter(2);
-        }
-        else{
-            morseLetter(4);
-            globalSettings.morseMenuOn = false;//unset after playing
-        }
         SaveSettingsToEeprom();
         //Don't handle touch or knob on this run
         return MenuReturn_e::StillActive;//main menu always returns StillActive
@@ -176,8 +165,7 @@ MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
       adjustSelector(&mainMenuSelectedItemRaw,
                      knob,
                      mainMenuButtons,
-                     MAIN_MENU_NUM_BUTTONS,
-                     MorsePlaybackType_e::PlayChar);
+                     MAIN_MENU_NUM_BUTTONS);
     }
     else{
       mainMenuTune(knob);
