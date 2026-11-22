@@ -21,6 +21,7 @@
 #include "setup.h"
 #include "string.h"
 #include "tuner.h"
+#include "tx_manager.h"
 #include "utils.h"
 #include "version.h"
 
@@ -111,7 +112,7 @@ void drawVBat()
 
 void drawTx()
 {
-  if(globalSettings.txActive){
+  if(txIsActive()){
     strncpy_P(b,(const char*)F("TX"),sizeof(b));
 
     Style style;

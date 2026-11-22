@@ -1,7 +1,9 @@
 #include "toneAC2/toneAC2.h"
 #include "pin_definitions.h"
+#include "ptt.h"
 #include "settings.h"
 #include "tuner.h"
+#include "tx_manager.h"
 
 /**
  * The CW keyer uses independent dot and dash inputs.
@@ -17,7 +19,7 @@ void cwKeydown(){
   toneAC2(PIN_CW_TONE, globalSettings.cwSideToneFreq);
   digitalWrite(PIN_CW_KEY, 1);
 
-  globalSettings.cwExpirationTimeMs = millis() + globalSettings.cwActiveTimeoutMs;
+  txCwTailRestart();
 }
 
 /**
@@ -28,7 +30,7 @@ void cwKeyUp(){
   noToneAC2();
   digitalWrite(PIN_CW_KEY, 0);
   
-  globalSettings.cwExpirationTimeMs = millis() + globalSettings.cwActiveTimeoutMs;
+  txCwTailRestart();
 }
 
 //Variables for Ron's new logic
@@ -38,9 +40,11 @@ void cwKeyUp(){
 #define PDLSWAP 0x08 // 0 for normal, 1 for swap
 #define IAMBICB 0x10 // 0 for Iambic A, 1 for Iambic B
 enum KSTYPE {IDLE, CHK_DIT, CHK_DAH, KEYED_PREP, KEYED, INTER_ELEMENT };
-static unsigned long ktimer;
-unsigned char keyerState = IDLE;
-uint8_t keyerControl = 0;
+static uint32_t keyerElementDurationMs = 0;//Length of the element being prepared
+static uint32_t keyerDeadlineMs = 0;//End of the element or inter-element gap being timed
+static KSTYPE keyerState = IDLE;
+static uint8_t keyerControl = 0;
+static bool straightKeyDown = false;
 
 static bool cwPracticeActive = false;
 static uint8_t cwPracticeSegment = 0;
@@ -141,120 +145,130 @@ uint8_t update_PaddleLatch(bool isUpdateKeyState) {
 // New logic, by RON
 // modified by KD8CEC
 ******************************************************************************/
-void cwKeyer(void){
-  bool continue_loop = true;
-  uint8_t tmpKeyControl = 0;
-  
-  if((KeyerMode_e::KEYER_STRAIGHT == globalSettings.keyerMode)
-    || (digitalRead(PIN_PTT) == 0)){//use the PTT as the key for tune up, quick QSOs
-    while(1){
-      tmpKeyControl = (update_PaddleLatch(false) & DIT_L)
-                    | (digitalRead(PIN_PTT) ? 0 : DIT_L);
-      if ((tmpKeyControl & DIT_L) == DIT_L) {
-        // Straight-key mode uses DIT; PTT is also accepted as a CW key.
-        if (!globalSettings.txActive){
-          startTx(TuningMode_e::TUNE_CW);
-          globalSettings.cwExpirationTimeMs = millis() + globalSettings.cwActiveTimeoutMs;
-        }
-        cwKeydown();
-        
-        while ((tmpKeyControl & DIT_L) == DIT_L){
-          tmpKeyControl = (update_PaddleLatch(false) & DIT_L)
-                        | (digitalRead(PIN_PTT) ? 0 : DIT_L);
-        }
-          
-        cwKeyUp();
+static bool deadlineReached(const uint32_t nowMs, const uint32_t deadlineMs)
+{
+  return static_cast<int32_t>(nowMs - deadlineMs) >= 0;
+}
+
+//Straight key mode uses DIT; PTT is also accepted as a CW key for tune up and quick QSOs
+static void straightKeyUpdate(const uint32_t nowMs)
+{
+  const bool keyPressed = (update_PaddleLatch(false) & DIT_L) || IsPttPressed();
+
+  if (keyPressed){
+    if (!straightKeyDown){
+      if (TxSource::CwKey != txSource()){
+        txStart(TxSource::CwKey);//Fails while another source owns TX, so just try again next pass
+        return;//Key down on the next pass, once the main loop has updated the display
+      }
+      cwKeydown();
+      straightKeyDown = true;
+    }
+  }
+  else if (straightKeyDown){
+    cwKeyUp();
+    straightKeyDown = false;
+  }
+  else{
+    txStopIfCwTailExpired(nowMs);//Only while idle, so a character is never cut short
+  }
+}
+
+//Performs one state transition at most, and never waits for a timer or a paddle
+static void iambicKeyerUpdate(const uint32_t nowMs)
+{
+  switch(keyerState){
+    case IDLE:
+    {
+      const uint8_t tmpKeyControl = update_PaddleLatch(false);
+      if((tmpKeyControl == DAH_L)//Currently dah
+       ||(tmpKeyControl == DIT_L)//Currently dit
+       ||(tmpKeyControl == (DAH_L | DIT_L))//Currently both
+       ||( keyerControl  & (DAH_L | DIT_L))){//Resolving either
+        update_PaddleLatch(true);
+        keyerState = CHK_DIT;
       }
       else{
-        if (0 < globalSettings.cwExpirationTimeMs && globalSettings.cwExpirationTimeMs < millis()){
-          globalSettings.cwExpirationTimeMs = 0;
-          stopTx();
-        }
-        return;//Tx stop control by Main Loop
+        txStopIfCwTailExpired(nowMs);//Only while idle, so a character is never cut short
       }
+      break;
+    }
 
-    } //end of while
-    
+    case CHK_DIT:
+      if (keyerControl & DIT_L) {
+        keyerControl |= DIT_PROC;
+        keyerElementDurationMs = globalSettings.cwDitDurationMs;
+        keyerState = KEYED_PREP;
+      }else{
+        keyerState = CHK_DAH;
+      }
+      break;
+
+    case CHK_DAH:
+      if (keyerControl & DAH_L) {
+        keyerElementDurationMs = 3*globalSettings.cwDitDurationMs;
+        keyerState = KEYED_PREP;
+      }else{
+        keyerState = IDLE;
+      }
+      break;
+
+    case KEYED_PREP:
+      //modified KD8CEC
+      if (TxSource::CwKey != txSource()){
+        txStart(TxSource::CwKey);//Fails while another source owns TX, so just try again next pass
+        break;//Key down on the next pass, once the main loop has updated the display
+      }
+      keyerControl &= ~(DIT_L + DAH_L); // clear both paddle latch bits
+      cwKeydown();
+      //Time from the moment the key went down, since starting TX can take a while
+      keyerDeadlineMs = millis() + keyerElementDurationMs;
+      keyerState = KEYED; // next state
+      break;
+
+    case KEYED:
+      if (deadlineReached(nowMs, keyerDeadlineMs)) { // are we at end of key down ?
+        cwKeyUp();
+        keyerDeadlineMs = millis() + globalSettings.cwDitDurationMs; // inter-element time
+        keyerState = INTER_ELEMENT; // next state
+      }
+      else if(KeyerMode_e::KEYER_IAMBIC_B == globalSettings.keyerMode){
+        update_PaddleLatch(true); // early paddle latch in Iambic B mode
+      }
+      break;
+
+    case INTER_ELEMENT:
+      // Insert time between dits/dahs
+      update_PaddleLatch(true); // latch paddle state
+      if (deadlineReached(nowMs, keyerDeadlineMs)) { // are we at end of inter-space ?
+        if (keyerControl & DIT_PROC) { // was it a dit or dah ?
+          keyerControl &= ~(DIT_L + DIT_PROC); // clear two bits
+          keyerState = CHK_DAH; // dit done, check for dah
+        }else{
+          keyerControl &= ~(DAH_L); // clear dah latch
+          keyerState = IDLE; // go idle
+        }
+      }
+      break;
+  }
+}
+
+/*
+ * Call this on every pass of the main loop. It never blocks, so the rest of the
+ * firmware keeps running while keying; elements are timed against the clock.
+ */
+void cwKeyerUpdate(const uint32_t nowMs){
+  //An element or key-down in progress is always finished in the mode it was started in
+  const bool midElement = straightKeyDown || (IDLE != keyerState);
+  const bool useStraightKey = straightKeyDown
+    || (!midElement
+        && ((KeyerMode_e::KEYER_STRAIGHT == globalSettings.keyerMode)
+            || IsPttPressed()));//use the PTT as the key for tune up, quick QSOs
+
+  if(useStraightKey){
+    straightKeyUpdate(nowMs);
   }
   else{//KEYER_IAMBIC_*
-    while(continue_loop){
-      switch(keyerState){
-        case IDLE:
-          tmpKeyControl = update_PaddleLatch(false);
-          if((tmpKeyControl == DAH_L)//Currently dah
-           ||(tmpKeyControl == DIT_L)//Currently dit
-           ||(tmpKeyControl == (DAH_L | DIT_L))//Currently both
-           ||( keyerControl  & (DAH_L | DIT_L))){//Resolving either
-             update_PaddleLatch(true);
-             keyerState = CHK_DIT;
-          }
-          else{
-            if (0 < globalSettings.cwExpirationTimeMs && globalSettings.cwExpirationTimeMs < millis()){
-              globalSettings.cwExpirationTimeMs = 0;
-              stopTx();
-            }
-            continue_loop = false;
-          }
-          break;
-    
-        case CHK_DIT:
-          if (keyerControl & DIT_L) {
-            keyerControl |= DIT_PROC;
-            ktimer = globalSettings.cwDitDurationMs;
-            keyerState = KEYED_PREP;
-          }else{
-            keyerState = CHK_DAH;
-          }
-          break;
-    
-        case CHK_DAH:
-          if (keyerControl & DAH_L) {
-            ktimer = 3*globalSettings.cwDitDurationMs;
-            keyerState = KEYED_PREP;
-          }else{
-            keyerState = IDLE;
-          }
-          break;
-    
-        case KEYED_PREP:
-          //modified KD8CEC
-          if (!globalSettings.txActive){
-            globalSettings.cwExpirationTimeMs = millis() + globalSettings.cwActiveTimeoutMs;
-            startTx(TuningMode_e::TUNE_CW);
-          }
-          ktimer += millis(); // set ktimer to interval end time
-          keyerControl &= ~(DIT_L + DAH_L); // clear both paddle latch bits
-          keyerState = KEYED; // next state
-          
-          cwKeydown();
-          break;
-    
-        case KEYED:
-          if (millis() > ktimer) { // are we at end of key down ?
-            cwKeyUp();
-            ktimer = millis() + globalSettings.cwDitDurationMs; // inter-element time
-            keyerState = INTER_ELEMENT; // next state
-          }
-          else if(KeyerMode_e::KEYER_IAMBIC_B == globalSettings.keyerMode){
-            update_PaddleLatch(true); // early paddle latch in Iambic B mode
-          }
-          break;
-    
-        case INTER_ELEMENT:
-          // Insert time between dits/dahs
-          update_PaddleLatch(true); // latch paddle state
-          if (millis() > ktimer) { // are we at end of inter-space ?
-            if (keyerControl & DIT_PROC) { // was it a dit or dah ?
-              keyerControl &= ~(DIT_L + DIT_PROC); // clear two bits
-              keyerState = CHK_DAH; // dit done, check for dah
-            }else{
-              keyerControl &= ~(DAH_L); // clear dah latch
-              keyerState = IDLE; // go idle
-            }
-          }
-          break;
-      }
-  
-    } //end of while
-  }//end of KEYER_IAMBIC_*
+    iambicKeyerUpdate(nowMs);
+  }
 }

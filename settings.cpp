@@ -73,7 +73,7 @@ void LoadDefaultSettings()
   globalSettings.keyerMode = KEYER_STRAIGHT;
   globalSettings.cwSideToneFreq = 800;
   globalSettings.cwDitDurationMs = 100;
-  globalSettings.cwActiveTimeoutMs = 50;
+  globalSettings.cwActiveTimeoutMs = 500;//Within the 100-1000 ms range allowed by the settings screen
 
   globalSettings.touchSlopeX = 104;
   globalSettings.touchSlopeY = 137;
@@ -87,8 +87,6 @@ void LoadDefaultSettings()
 
   globalSettings.splitOn = false;
 
-  globalSettings.txActive = false;
-  globalSettings.cwExpirationTimeMs = 0;
   globalSettings.sMeterValue = 0;
 }
 

@@ -14,10 +14,7 @@
 
 
 void drawMainMenu(void);
-MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
-                         const ButtonPress_e touch_button,
-                         const Point touch_point,
-                         const int16_t knob);
+MenuReturn_e runMainMenu(const MenuInput& input);
 Menu_t mainMenu = {
   drawMainMenu,
   runMainMenu,
@@ -106,71 +103,77 @@ void mainMenuTune(int16_t knob)
   autoSelectSidebandChanged(current_freq);
 }
 
-MenuReturn_e runMainMenu(const ButtonPress_e tuner_button,
-                         const ButtonPress_e touch_button,
-                         const Point touch_point,
-                         const int16_t knob)
+MenuReturn_e runMainMenu(const MenuInput& input)
 {
-  //Check tuner_button
-  if(ButtonPress_e::NotPressed != tuner_button){
-    switch(tuner_button){
-      default://Fallthrough intended
-      case ButtonPress_e::NotPressed:
-      {
-        //Nothing to do
-        break;
-      }
-      case ButtonPress_e::ShortPress:
-      {
-        if(mainMenuSelecting){
-          uint8_t menu_index = mainMenuSelectedItemRaw/MENU_KNOB_COUNTS_PER_ITEM;
-          const Button* button = mainMenuButtons[menu_index];
-          endSelector(button);
-          button->select();
+  switch(input.type){
+    case MenuInputType::Tuner:
+    {
+      switch(input.press){
+        default://Fallthrough intended
+        case ButtonPress_e::NotPressed:
+        {
+          //Nothing to do
+          break;
         }
-        else{
-          initSelector(&mainMenuSelectedItemRaw,
+        case ButtonPress_e::ShortPress:
+        {
+          if(mainMenuSelecting){
+            uint8_t menu_index = mainMenuSelectedItemRaw/MENU_KNOB_COUNTS_PER_ITEM;
+            const Button* button = mainMenuButtons[menu_index];
+            endSelector(button);
+            button->select();
+          }
+          else{
+            initSelector(&mainMenuSelectedItemRaw,
+                         mainMenuButtons,
+                         MAIN_MENU_NUM_BUTTONS);
+          }
+          mainMenuSelecting = !mainMenuSelecting;
+
+          return MenuReturn_e::StillActive;//main menu always returns StillActive
+        }
+        case ButtonPress_e::LongPress:
+        {
+          SaveSettingsToEeprom();
+          return MenuReturn_e::StillActive;//main menu always returns StillActive
+        }
+      }//switch
+      break;
+    }
+
+    case MenuInputType::Touch:
+    {
+      //We treat long and short presses the same, so no need to have a switch
+      const Button* button = findPressedButton(mainMenuButtons,MAIN_MENU_NUM_BUTTONS,input.point);
+      if(nullptr != button){
+        button->select();
+      }
+      else{
+        //Touch detected, but not on our buttons, so ignore
+      }
+      break;
+    }
+
+    case MenuInputType::Knob:
+    {
+      if(mainMenuSelecting){
+        adjustSelector(&mainMenuSelectedItemRaw,
+                       input.knob,
                        mainMenuButtons,
                        MAIN_MENU_NUM_BUTTONS);
-        }
-        mainMenuSelecting = !mainMenuSelecting;
-
-        //Don't handle touch or knob on this run
-        return MenuReturn_e::StillActive;//main menu always returns StillActive
-        break;
       }
-      case ButtonPress_e::LongPress:
-      {
-        SaveSettingsToEeprom();
-        //Don't handle touch or knob on this run
-        return MenuReturn_e::StillActive;//main menu always returns StillActive
-        break;
+      else{
+        mainMenuTune(input.knob);
       }
-    }//switch
-  }//tuner_button
+      break;
+    }
 
-  else if(ButtonPress_e::NotPressed != touch_button){
-    //We treat long and short presses the same, so no need to have a switch
-    const Button* button = findPressedButton(mainMenuButtons,MAIN_MENU_NUM_BUTTONS,touch_point);
-    if(nullptr != button){
-      button->select();
+    case MenuInputType::Tick:
+    {
+      //Nothing to handle; the incremental draw below keeps the screen current
+      break;
     }
-    else{
-      //Touch detected, but not on our buttons, so ignore
-    }
-  }//touch_button
-
-  else{//Neither button input type found, so handle the knob
-    if(mainMenuSelecting){
-      adjustSelector(&mainMenuSelectedItemRaw,
-                     knob,
-                     mainMenuButtons,
-                     MAIN_MENU_NUM_BUTTONS);
-    }
-    else{
-      mainMenuTune(knob);
-    }
-  }
+  }//switch
 
   drawMainMenuIncrement();
 

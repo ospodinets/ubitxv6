@@ -8,6 +8,7 @@
 enum class EventType : uint8_t {
   TunerPress,//press holds the ButtonPress_e
   TouchPress,//press holds the ButtonPress_e, point holds the scaled touch position
+  KnobTurned,//knob holds the number of encoder counts turned since the last event
   PttChanged //pressed holds the PTT state sampled in the interrupt
 };
 
@@ -15,6 +16,7 @@ struct Event {
   EventType type;
   ButtonPress_e press;
   bool pressed;
+  int16_t knob;
   Point point;
   uint32_t timestampMs;
 };

@@ -159,10 +159,7 @@ void refreshSettingValue(const SettingScreen_t& screen, const long int value)
 void activateSetting(SettingScreen_t* new_setting_P);
 
 void initSetting();
-MenuReturn_e runSetting(const ButtonPress_e tuner_button,
-                        const ButtonPress_e touch_button,
-                        const Point touch_point,
-                        const int16_t knob);
+MenuReturn_e runSetting(const MenuInput& input);
 Menu_t setupMenuActiveSettingMenu = {
   initSetting,
   runSetting,
@@ -220,25 +217,22 @@ void advanceSettingValue()
   }
 }
 
-MenuReturn_e runSetting(const ButtonPress_e tuner_button,
-                        const ButtonPress_e touch_button,
-                        const Point touch_point,
-                        const int16_t knob)
+MenuReturn_e runSetting(const MenuInput& input)
 {
   if(nullptr == activeSettingP){
     return MenuReturn_e::ExitedRedraw;
   }
 
-  if(ButtonPress_e::NotPressed != tuner_button){
+  if(MenuInputType::Tuner == input.type){
     //Long or short press, we do the same thing
     activeSettingP->Finalize(setupMenuLastValue);
     return MenuReturn_e::ExitedRedraw;
   }
 
-  if(ButtonPress_e::NotPressed != touch_button){
+  if(MenuInputType::Touch == input.type){
     const Button* button = findPressedButton(settingButtons,
                                               sizeof(settingButtons)/sizeof(settingButtons[0]),
-                                              touch_point);
+                                              input.point);
     if(nullptr != button){
       button->select();
       if(setupMenuSettingFinished){
@@ -248,8 +242,8 @@ MenuReturn_e runSetting(const ButtonPress_e tuner_button,
     return MenuReturn_e::StillActive;
   }
 
-  if(0 != knob){
-    setupMenuRawValue += knob * activeSettingP->StepSize;
+  if(MenuInputType::Knob == input.type){
+    setupMenuRawValue += input.knob * activeSettingP->StepSize;
 
     const int32_t candidate_value = setupMenuRawValue / (int32_t)activeSettingP->KnobDivider;
     int32_t value = 0;
@@ -573,27 +567,18 @@ void initSetupMenu(const MenuItem_t* const menu_items,
                    const uint16_t num_items);
 MenuReturn_e runSetupMenu(const MenuItem_t* const menu_items,
                           const uint16_t num_items,
-                          const ButtonPress_e tuner_button,
-                          const ButtonPress_e touch_button,
-                          const Point touch_point,
-                          const int16_t knob);
+                          const MenuInput& input);
 
 #define GENERATE_MENU_T(menu_name) \
           void initSetupMenu##menu_name(void)\
           {\
             initSetupMenu(menuItems##menu_name,sizeof(menuItems##menu_name)/sizeof(menuItems##menu_name[0]));\
           }\
-          MenuReturn_e runSetupMenu##menu_name(const ButtonPress_e tuner_button,\
-                                            const ButtonPress_e touch_button,\
-                                            const Point touch_point,\
-                                            const int16_t knob)\
+          MenuReturn_e runSetupMenu##menu_name(const MenuInput& input)\
           {\
             return runSetupMenu(menuItems##menu_name,\
                                 sizeof(menuItems##menu_name)/sizeof(menuItems##menu_name[0]),\
-                                tuner_button,\
-                                touch_button,\
-                                touch_point,\
-                                knob\
+                                input\
                                 );\
           }\
           Menu_t setupMenu##menu_name = {\
@@ -772,21 +757,18 @@ void initSetupMenu(const MenuItem_t* const menu_items,
 
 MenuReturn_e runSetupMenu(const MenuItem_t* const menu_items,
                           const uint16_t num_items,
-                          const ButtonPress_e tuner_button,
-                          const ButtonPress_e touch_button,
-                          const Point touch_point,
-                          const int16_t knob)
+                          const MenuInput& input)
 {
   (void)menu_items;
   if(setupMenuExitSelected){
     return MenuReturn_e::ExitedRedraw;
   }
 
-  if(ButtonPress_e::NotPressed != tuner_button){
+  if(MenuInputType::Tuner == input.type){
     setupMenuButtons[setupMenuSelectedButton()]->select();
   }
-  else if(ButtonPress_e::NotPressed != touch_button){
-    const Button* button = findPressedButton(setupMenuButtons,(uint8_t)num_items,touch_point);
+  else if(MenuInputType::Touch == input.type){
+    const Button* button = findPressedButton(setupMenuButtons,(uint8_t)num_items,input.point);
     if(nullptr != button){
       uint8_t index = 0;
       while(setupMenuButtons[index] != button){
@@ -796,9 +778,9 @@ MenuReturn_e runSetupMenu(const MenuItem_t* const menu_items,
       button->select();
     }
   }
-  else if(0 != knob){
+  else if(MenuInputType::Knob == input.type){
     const uint8_t old_index = setupMenuSelectedButton();
-    setupMenuSelector = LIMIT(setupMenuSelector + knob,
+    setupMenuSelector = LIMIT(setupMenuSelector + input.knob,
                               0,
                               (int16_t)(num_items*MENU_KNOB_COUNTS_PER_ITEM - 1));
     const uint8_t new_index = setupMenuSelectedButton();

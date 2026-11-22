@@ -2,6 +2,7 @@
 #include <stm32f4xx_hal.h>
 
 #include "encoder.h"
+#include "events.h"
 #include "pin_definitions.h"
 
 static const uint16_t CALLBACK_PERIOD_MS = 200;
@@ -119,4 +120,16 @@ int enc_read(void)
 
   enc_count = 0;
   return static_cast<int>(result);
+}
+
+void encoderPoll(const uint32_t nowMs)
+{
+  const int knob = enc_read();
+  if (0 != knob) {
+    Event event = {};
+    event.type = EventType::KnobTurned;
+    event.knob = static_cast<int16_t>(knob);
+    event.timestampMs = nowMs;
+    eventPost(event);
+  }
 }

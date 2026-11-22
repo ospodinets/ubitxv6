@@ -1,10 +1,7 @@
 #include "menu.h"
 #include "menu_main.h"
 
-void runActiveMenu(const ButtonPress_e tuner_button,
-                   const ButtonPress_e touch_button,
-                   const Point touch_point,
-                   const int16_t knob)
+void runActiveMenu(const MenuInput& input)
 {
   Menu_t* parent_menu = rootMenu;//rootMenu is it's own parent
   Menu_t* active_menu = rootMenu;
@@ -12,7 +9,7 @@ void runActiveMenu(const ButtonPress_e tuner_button,
     parent_menu = active_menu;
     active_menu = parent_menu->active_submenu;
   }
-  MenuReturn_e mr = active_menu->runMenu(tuner_button,touch_button,touch_point,knob);
+  MenuReturn_e mr = active_menu->runMenu(input);
   switch(mr){
     case MenuReturn_e::StillActive://Fallthrough intended
     case MenuReturn_e::ExitedNoRedraw:

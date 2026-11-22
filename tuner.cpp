@@ -122,62 +122,6 @@ void setFrequency(const unsigned long freq,
 }
 
 /**
- * startTx is called by the PTT and cw keyer to
- * put the uBitx in tx mode. It takes care of rit settings, sideband settings
- * Note: In cw mode, doesnt key the radio, only puts it in tx mode
- * CW offest is calculated as lower than the operating frequency when in LSB mode, and vice versa in USB mode
- */
- 
-void startTx(TuningMode_e tx_mode){
-  globalSettings.tuningMode = tx_mode;
-
-  if (globalSettings.ritOn){
-    //save the current as the rx frequency
-    uint32_t rit_tx_freq = globalSettings.ritFrequency;
-    globalSettings.ritFrequency = GetActiveVfoFreq();
-    setFrequency(rit_tx_freq,true);
-  }
-  else{
-    if(globalSettings.splitOn){
-      if(Vfo_e::VFO_B == globalSettings.activeVfo){
-        globalSettings.activeVfo = Vfo_e::VFO_A;
-      }
-      else{
-        globalSettings.activeVfo = Vfo_e::VFO_B;
-      }
-    }
-    setFrequency(GetActiveVfoFreq(),true);
-  }
-
-  digitalWrite(PIN_TX_RXn, 1);//turn on the tx
-  globalSettings.txActive = true;
-  drawTx();
-}
-
-void stopTx(){
-  digitalWrite(PIN_TX_RXn, 0);//turn off the tx
-  globalSettings.txActive = false;
-
-  if(globalSettings.ritOn){
-    uint32_t rit_rx_freq = globalSettings.ritFrequency;
-    globalSettings.ritFrequency = GetActiveVfoFreq();
-    setFrequency(rit_rx_freq);
-  }
-  else{
-    if(globalSettings.splitOn){
-      if(Vfo_e::VFO_B == globalSettings.activeVfo){
-        globalSettings.activeVfo = Vfo_e::VFO_A;
-      }
-      else{
-        globalSettings.activeVfo = Vfo_e::VFO_B;
-      }
-    }
-    setFrequency(GetActiveVfoFreq());
-  }
-  drawTx();
-}
-
-/**
  * ritEnable is called with a frequency parameter that determines
  * what the tx frequency will be
  */

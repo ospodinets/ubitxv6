@@ -43,6 +43,7 @@
 #include "si5351.h"
 #include "touch.h"
 #include "tuner.h"
+#include "tx_manager.h"
 #include "ui_touch.h"
 
 /**
@@ -67,21 +68,21 @@ static bool userInputSuspended = false;
 /**
  * The PTT is handled only if we are not in cw mode, where the keyer reads the
  * pin directly so that it can be used as a straight key.
- * If the PTT is pressed, we shift to the ritbase if the rit was on
- * flip the T/R line to T and update the display to denote transmission
+ * The TX manager only lets the PTT end a TX that the PTT started.
  */
 void handlePttEvent(const Event& event){
-  if(TuningMode_e::TUNE_CW == globalSettings.tuningMode
-     || globalSettings.cwExpirationTimeMs > 0){
+  if(TuningMode_e::TUNE_CW == globalSettings.tuningMode){
     return;
   }
 
-  if(event.pressed && !globalSettings.txActive){
-    userInputSuspended = true;
-    startTx(TuningMode_e::TUNE_SSB);
+  if(event.pressed){
+    if(!txIsActive()){
+      userInputSuspended = true;
+    }
+    txStart(TxSource::Ptt);
   }
-  else if(!event.pressed && globalSettings.txActive){
-    stopTx();
+  else{
+    txStop(TxSource::Ptt);
   }
 }
 
@@ -151,47 +152,51 @@ void resetUserInput(){
 
 /**
  * Samples the polled front panel controls, then dispatches every queued event:
- * PTT events control TX, and the others go to the active menu, unless we are transmitting.
- * The knob is handed to the first menu run only, and the menu is run at least
- * once per call so it can keep its display up to date.
+ * PTT events control TX, and the others go to the active menu as a MenuInput,
+ * unless we are transmitting. If no menu input came in, the menu gets a Tick
+ * so it can keep its display up to date.
  */
 void runUserInput(){
-  if(!globalSettings.txActive){
+  if(!txIsActive()){
     const uint32_t now = millis();
     tunerButtonPoll(now);
     touchPoll(now);
+    encoderPoll(now);
   }
 
-  int16_t knob = globalSettings.txActive ? 0 : enc_read();
   bool menu_run = false;
   Event event;
   while(eventPop(&event)){
-    ButtonPress_e tuner_button = ButtonPress_e::NotPressed;
-    ButtonPress_e touch_button = ButtonPress_e::NotPressed;
-    Point touch_point = {0, 0};
+    MenuInput input = {};
     switch(event.type){
       case EventType::PttChanged:
         handlePttEvent(event);
         continue;
       case EventType::TunerPress:
-        tuner_button = event.press;
+        input.type = MenuInputType::Tuner;
+        input.press = event.press;
         break;
       case EventType::TouchPress:
-        touch_button = event.press;
-        touch_point = event.point;
+        input.type = MenuInputType::Touch;
+        input.press = event.press;
+        input.point = event.point;
+        break;
+      case EventType::KnobTurned:
+        input.type = MenuInputType::Knob;
+        input.knob = event.knob;
         break;
     }
-    if(globalSettings.txActive){
+    if(txIsActive()){
       continue;//Don't run menus when transmitting
     }
-    runActiveMenu(tuner_button,touch_button,touch_point,knob);
-    knob = 0;
+    runActiveMenu(input);
     menu_run = true;
   }
 
-  if(!menu_run && !globalSettings.txActive){
-    const Point no_touch = {0, 0};
-    runActiveMenu(ButtonPress_e::NotPressed,ButtonPress_e::NotPressed,no_touch,knob);
+  if(!menu_run && !txIsActive()){
+    MenuInput tick = {};
+    tick.type = MenuInputType::Tick;
+    runActiveMenu(tick);
   }
 }
 
@@ -246,10 +251,10 @@ void setup()
 
 void loop(){
   if(TuningMode_e::TUNE_CW == globalSettings.tuningMode){
-    cwKeyer();
+    cwKeyerUpdate(millis());
   }
 
-  if(userInputSuspended && !globalSettings.txActive){
+  if(userInputSuspended && !txIsActive()){
     //Anything pressed during TX must not act as a menu input afterwards
     resetUserInput();
     userInputSuspended = false;
@@ -258,7 +263,11 @@ void loop(){
   resyncPttIfEventsDropped();
   runUserInput();
 
-  if(globalSettings.txActive){
+  if(consumeTxIndicatorStale()){
+    drawTx();
+  }
+
+  if(txIsActive()){
     stopCwPractice();
     userInputSuspended = true;
     return;

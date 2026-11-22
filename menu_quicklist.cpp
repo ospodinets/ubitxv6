@@ -11,10 +11,7 @@
 #include "menu.h"
 
 void initQuickList(void);
-MenuReturn_e runQuickList(const ButtonPress_e tuner_button,
-                       const ButtonPress_e touch_button,
-                       const Point touch_point,
-                       const int16_t knob);
+MenuReturn_e runQuickList(const MenuInput& input);
 Menu_t quickList_menu = {
   initQuickList,
   runQuickList,
@@ -42,15 +39,9 @@ void initQuickList(void)
                 QUICKLIST_MENU_NUM_BUTTONS);
 }
 
-MenuReturn_e runQuickList(const ButtonPress_e tuner_button,
-                       const ButtonPress_e touch_button,
-                       const Point touch_point,
-                       const int16_t knob)
+MenuReturn_e runQuickList(const MenuInput& input)
 {
-  return runNpQlShared(tuner_button,
-                       touch_button,
-                       touch_point,
-                       knob,
+  return runNpQlShared(input,
                        &quickListMenuSelectedItemRaw,
                        quickListMenuButtons,
                        QUICKLIST_MENU_NUM_BUTTONS,

@@ -4,11 +4,9 @@
 
 void saveVFOs();
 void setFrequency(const unsigned long freq, const bool transmit = false);
-void startTx(TuningMode_e tx_mode);
-void stopTx();
 void ritEnable(unsigned long f);
 void ritDisable();
-void cwKeyer(void);
+void cwKeyerUpdate(const uint32_t nowMs);//Non-blocking; call on every pass of the main loop
 void startCwPractice(uint16_t frequency, uint16_t ditDurationMs);
 void updateCwPractice();
 void stopCwPractice();

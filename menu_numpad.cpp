@@ -11,10 +11,7 @@
 #include "menu.h"
 
 void initNumpad(void);
-MenuReturn_e runNumpad(const ButtonPress_e tuner_button,
-                       const ButtonPress_e touch_button,
-                       const Point touch_point,
-                       const int16_t knob);
+MenuReturn_e runNumpad(const MenuInput& input);
 Menu_t numpad_menu = {
   initNumpad,
   runNumpad,
@@ -41,15 +38,9 @@ void initNumpad(void)
                 NUMPAD_MENU_NUM_BUTTONS);
 }
 
-MenuReturn_e runNumpad(const ButtonPress_e tuner_button,
-                       const ButtonPress_e touch_button,
-                       const Point touch_point,
-                       const int16_t knob)
+MenuReturn_e runNumpad(const MenuInput& input)
 {
-  return runNpQlShared(tuner_button,
-                       touch_button,
-                       touch_point,
-                       knob,
+  return runNpQlShared(input,
                        &numpadMenuSelectedItemRaw,
                        numpadMenuButtons,
                        NUMPAD_MENU_NUM_BUTTONS,
