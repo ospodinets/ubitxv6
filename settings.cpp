@@ -45,7 +45,9 @@ static void LoadSettingsImage()
     for(size_t i = 0; i < sizeof(persistedSettings); ++i){
       persistedSettings[i] = eeprom_buffered_read_byte(i);
     }
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
     Serial.println(F("Settings: using legacy EEPROM image"));
+#endif
   }
   if(invalidRecords){
     Serial.println(F("Settings: WARNING, incomplete or corrupt journal record"));
@@ -210,6 +212,7 @@ static void PutAllSettings(EepromSettingsBatch& batch)
 
 bool SaveSettingsToEeprom()
 {
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
   const bool timerAvailable = (DWT->CTRL & DWT_CTRL_NOCYCCNT_Msk) == 0;
   if(timerAvailable){
@@ -218,28 +221,38 @@ bool SaveSettingsToEeprom()
   Serial.println(F("EEPROM save: start"));
 
   const uint32_t start = DWT->CYCCNT;
+#endif
   LoadSettingsImage();
   uint8_t image[SettingsJournal::IMAGE_SIZE];
   memcpy(image, persistedSettings, sizeof(image));
   EepromSettingsBatch batch{image};
   PutAllSettings(batch);
 
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
   uint32_t writeCycles = 0;
+#endif
   bool erasedSector = false;
   bool saved = true;
   if(batch.changedBytes != 0){
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
     const uint32_t writeStart = DWT->CYCCNT;
+#endif
     saved = SettingsJournal::save(image, erasedSector);
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
     writeCycles = DWT->CYCCNT - writeStart;
+#endif
     if(saved){
       memcpy(persistedSettings, image, sizeof(image));
     }
   }
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
   const uint32_t elapsedCycles = DWT->CYCCNT - start;
+#endif
 
   if(!saved){
     Serial.println(F("EEPROM save: ERROR, journal write or verification failed"));
   }
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
   Serial.print(F("EEPROM save: changed bytes="));
   Serial.print(batch.changedBytes);
   Serial.print(F(" sector erased="));
@@ -254,6 +267,7 @@ bool SaveSettingsToEeprom()
   else{
     Serial.println(F(" timing unavailable"));
   }
+#endif
   return saved;
 }
 

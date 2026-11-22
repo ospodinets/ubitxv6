@@ -27,26 +27,35 @@ bool touchIrqConsume()
 
 void initTouch()
 {
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
   Serial.println(F("TOUCH: initializing"));
+#endif
   ts.begin();
   ts.setRotation(1);
 #if TOUCH_USE_IRQ
   pinMode(PIN_TOUCH_IRQ, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_TOUCH_IRQ), touchIsr, FALLING);
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
   Serial.println(F("TOUCH: wake interrupt enabled"));
 #endif
+#endif
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
   Serial.println(F("TOUCH: controller ready (rotation 1)"));
+#endif
 }
 
 bool readTouch(Point *const touch_point_out)
 {
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
   static bool wasTouched = false;
+#endif
   const bool istouched = ts.touched();
   if (istouched) 
   {
     TS_Point p = ts.getPoint();
     touch_point_out->x = p.x;
     touch_point_out->y = p.y;
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
     if (!wasTouched)
     {
       Serial.print(F("TOUCH: contact raw x="));
@@ -55,15 +64,18 @@ bool readTouch(Point *const touch_point_out)
       Serial.println(p.y);
     }
     wasTouched = true;
+#endif
     return true;
   }
   else
   {
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
     if (wasTouched)
     {
       Serial.println(F("TOUCH: contact released"));
     }
     wasTouched = false;
+#endif
     return false;
   }
 }

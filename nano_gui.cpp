@@ -463,21 +463,27 @@ void setupTouch(){
   Point cal_points[sizeof(CROSS_CORNER_POINTS)/sizeof(CROSS_CORNER_POINTS[0])];
 
   for(uint8_t i = 0; i < sizeof(CROSS_CORNER_POINTS)/sizeof(CROSS_CORNER_POINTS[0]); ++i){
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
     Serial.print(F("TOUCH: calibration point "));
     Serial.println(i + 1);
+#endif
     drawCross(CROSS_CORNER_POINTS[i].x,CROSS_CORNER_POINTS[i].y,DISPLAY_WHITE);
     while(!readTouch(&cal_points[i])){
       if(IsButtonPressed()){
         WaitForTunerButtonRelease();//Consume the press so that it isn't seen by the next screen
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
         Serial.println(F("TOUCH: calibration cancelled"));
+#endif
         return;
       }
       delay(100);
     }
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
     Serial.print(F("TOUCH: calibration raw x="));
     Serial.print(cal_points[i].x);
     Serial.print(F(" y="));
     Serial.println(cal_points[i].y);
+#endif
     while(readTouch(&cal_points[i])){
       delay(100);
     }
@@ -517,6 +523,7 @@ void setupTouch(){
   globalSettings.touchOffsetX = cal_points[0].x - ((CROSS_CORNER_OFFSET * globalSettings.touchSlopeX)/SCALE_SENSITIVITY_MULTIPLIER);
   globalSettings.touchOffsetY = cal_points[0].y - ((CROSS_CORNER_OFFSET * globalSettings.touchSlopeY)/SCALE_SENSITIVITY_MULTIPLIER);
 
+#if defined(ENABLE_TRACE) && ENABLE_TRACE
   Serial.print(F("TOUCH: calibration slope x="));
   Serial.print(globalSettings.touchSlopeX);
   Serial.print(F(" y="));
@@ -525,6 +532,7 @@ void setupTouch(){
   Serial.print(globalSettings.touchOffsetX);
   Serial.print(F(" y="));
   Serial.println(globalSettings.touchOffsetY);
+#endif
 
   SaveSettingsToEeprom();
 }

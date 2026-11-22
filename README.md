@@ -36,7 +36,9 @@ On the Black Pill STM32F411CE, settings use a flash journal in sectors 6 and 7. 
 
 Changed settings are appended as a checksummed record; unchanged saves do not write flash. When a sector fills, the other is erased before the next record is committed. A previous valid record remains available if power is lost during recycling. Erasing a sector can still cause an occasional noticeable pause.
 
-The serial monitor (38400 baud) reports the changed byte count, whether a sector was erased, and total and journal times in milliseconds. A write or readback failure is reported as an error. Serial output is excluded. Timings use the STM32 cycle counter because flash operations can stall SysTick; they assume a constant CPU clock and a save shorter than one counter wrap (about 43 seconds at 100 MHz).
+The active VFO is saved when settings are saved and restored on startup. Older settings without an active VFO selection default to VFO A.
+
+Diagnostic traces are disabled by default. To enable them, uncomment `-D ENABLE_TRACE=1` in `platformio.ini` and rebuild. The serial monitor (38400 baud) then reports touch activity and settings-save timing, including the changed byte count and whether a sector was erased. Warnings and errors remain enabled regardless of this flag. Serial output is excluded from timings. Timings use the STM32 cycle counter because flash operations can stall SysTick; they assume a constant CPU clock and a save shorter than one counter wrap (about 43 seconds at 100 MHz).
 
 # Future Features/Modifications
 
