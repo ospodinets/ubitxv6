@@ -467,7 +467,8 @@ void setupTouch(){
     Serial.println(i + 1);
     drawCross(CROSS_CORNER_POINTS[i].x,CROSS_CORNER_POINTS[i].y,DISPLAY_WHITE);
     while(!readTouch(&cal_points[i])){
-      if(ButtonPress_e::NotPressed != CheckTunerButton()){
+      if(IsButtonPressed()){
+        WaitForTunerButtonRelease();//Consume the press so that it isn't seen by the next screen
         Serial.println(F("TOUCH: calibration cancelled"));
         return;
       }

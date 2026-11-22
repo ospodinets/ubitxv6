@@ -31,9 +31,11 @@
  */
 #include <Wire.h>
 #include "encoder.h"
+#include "events.h"
 #include "menu.h"
 #include "menu_main.h"
 #include "pin_definitions.h"
+#include "ptt.h"
 #include "push_button.h"
 #include "nano_gui.h"
 #include "settings.h"
@@ -59,24 +61,44 @@ char c[30];
  * Basic User Interface Routines. These check the front panel for any activity
  */
 
+//Set while TX blocks the user interface, so the controls are re-armed when it ends
+static bool userInputSuspended = false;
+
 /**
- * The PTT is checked only if we are not already in a cw transmit session
+ * The PTT is handled only if we are not in cw mode, where the keyer reads the
+ * pin directly so that it can be used as a straight key.
  * If the PTT is pressed, we shift to the ritbase if the rit was on
  * flip the T/R line to T and update the display to denote transmission
  */
-
-void checkPTT(){
-  //we don't check for ptt when transmitting cw
-  if (globalSettings.cwExpirationTimeMs > 0){
+void handlePttEvent(const Event& event){
+  if(TuningMode_e::TUNE_CW == globalSettings.tuningMode
+     || globalSettings.cwExpirationTimeMs > 0){
     return;
   }
-    
-  if(digitalRead(PIN_PTT) == 0 && !globalSettings.txActive){
+
+  if(event.pressed && !globalSettings.txActive){
+    userInputSuspended = true;
     startTx(TuningMode_e::TUNE_SSB);
   }
-	
-  if (digitalRead(PIN_PTT) == 1 && globalSettings.txActive)
+  else if(!event.pressed && globalSettings.txActive){
     stopTx();
+  }
+}
+
+/**
+ * The event queue is full only if the loop was stalled, in which case a PTT edge
+ * may have been lost. Resynchronize from the pin so TX can't get stuck.
+ */
+void resyncPttIfEventsDropped(){
+  static uint16_t seenDropped = 0;
+  const uint16_t dropped = eventDroppedCount();
+  if(dropped != seenDropped){
+    seenDropped = dropped;
+    Event event = {};
+    event.type = EventType::PttChanged;
+    event.pressed = IsPttPressed();
+    handlePttEvent(event);
+  }
 }
 
 /**
@@ -96,8 +118,8 @@ void initPorts(){
   //??
   enc_setup();
   
-  pinMode(PIN_ENC_PUSH_BUTTON, INPUT);
-  pinMode(PIN_PTT, INPUT);
+  initTunerButton();
+  initPtt();
   pinMode(PIN_KEYER_DIT, INPUT_PULLUP);
   pinMode(PIN_KEYER_DAH, INPUT_PULLUP);
 
@@ -118,6 +140,74 @@ void initPorts(){
   digitalWrite(PIN_CW_KEY, 0);
 }
 
+/**
+ * Ignores the touch screen and tuner button until they have been released,
+ * and forgets any partially detected press. Queued events are left alone.
+ */
+void resetUserInput(){
+  tunerButtonReset();
+  touchReset();
+}
+
+/**
+ * Samples the polled front panel controls, then dispatches every queued event:
+ * PTT events control TX, and the others go to the active menu, unless we are transmitting.
+ * The knob is handed to the first menu run only, and the menu is run at least
+ * once per call so it can keep its display up to date.
+ */
+void runUserInput(){
+  if(!globalSettings.txActive){
+    const uint32_t now = millis();
+    tunerButtonPoll(now);
+    touchPoll(now);
+  }
+
+  int16_t knob = globalSettings.txActive ? 0 : enc_read();
+  bool menu_run = false;
+  Event event;
+  while(eventPop(&event)){
+    ButtonPress_e tuner_button = ButtonPress_e::NotPressed;
+    ButtonPress_e touch_button = ButtonPress_e::NotPressed;
+    Point touch_point = {0, 0};
+    switch(event.type){
+      case EventType::PttChanged:
+        handlePttEvent(event);
+        continue;
+      case EventType::TunerPress:
+        tuner_button = event.press;
+        break;
+      case EventType::TouchPress:
+        touch_button = event.press;
+        touch_point = event.point;
+        break;
+    }
+    if(globalSettings.txActive){
+      continue;//Don't run menus when transmitting
+    }
+    runActiveMenu(tuner_button,touch_button,touch_point,knob);
+    knob = 0;
+    menu_run = true;
+  }
+
+  if(!menu_run && !globalSettings.txActive){
+    const Point no_touch = {0, 0};
+    runActiveMenu(ButtonPress_e::NotPressed,ButtonPress_e::NotPressed,no_touch,knob);
+  }
+}
+
+/**
+ * Shows a settings screen and runs the menus until the user has finished with it.
+ * Only for use during setup(), where the main loop is not running yet.
+ */
+void runSettingScreenToCompletion(void (*const show_setting)()){
+  eventClearAll();
+  resetUserInput();
+  show_setting();
+  while(nullptr != rootMenu->active_submenu){
+    runUserInput();
+  }
+}
+
 void setup()
 {
   Serial.begin(38400);
@@ -131,18 +221,22 @@ void setup()
   setFrequency(globalSettings.vfoA.frequency);
 
   //Run initial calibration routine if button is pressed during power up
-  if(ButtonPress_e::NotPressed != CheckTunerButton()){
+  if(IsButtonPressed()){
+    WaitForTunerButtonRelease();//Consume the press so that it isn't seen as a menu action
     LoadDefaultSettings();
     setupTouch();
     SetActiveVfoMode(VfoMode_e::VFO_MODE_USB);
     setFrequency(10000000L);
-    runLocalOscSetting();
+    runSettingScreenToCompletion(runLocalOscSetting);
     SetActiveVfoMode(VfoMode_e::VFO_MODE_LSB);
     setFrequency(7100000L);
-    runBfoSetting();
+    runSettingScreenToCompletion(runBfoSetting);
   }
 
+  eventClearAll();
+  resetUserInput();
   rootMenu->initMenu();
+  enablePttEvents();//After setup, so PTT can't start TX during calibration
 }
 
 
@@ -154,21 +248,21 @@ void loop(){
   if(TuningMode_e::TUNE_CW == globalSettings.tuningMode){
     cwKeyer();
   }
-  else{
-    checkPTT();
+
+  if(userInputSuspended && !globalSettings.txActive){
+    //Anything pressed during TX must not act as a menu input afterwards
+    resetUserInput();
+    userInputSuspended = false;
   }
+
+  resyncPttIfEventsDropped();
+  runUserInput();
 
   if(globalSettings.txActive){
     stopCwPractice();
-    //Don't run menus when transmitting
+    userInputSuspended = true;
     return;
   }
 
   updateCwPractice();
-    
-  ButtonPress_e tuner_button = CheckTunerButton();
-  Point touch_point;
-  ButtonPress_e touch_button = checkTouch(&touch_point);
-  int16_t knob = enc_read();
-  runActiveMenu(tuner_button,touch_button,touch_point,knob);
 }

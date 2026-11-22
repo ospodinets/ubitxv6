@@ -1,31 +1,47 @@
 #include "ui_touch.h"
 
-#include <Arduino.h>//delay
-
 #include "button_timing.h"
+#include "events.h"
+#include "press_detector.h"
 #include "touch.h"
 
-ButtonPress_e checkTouch(Point *const touch_point_out){
-  if (!readTouch(touch_point_out)){
-    return ButtonPress_e::NotPressed;
+static PressDetector touchDetector(TOUCH_MIN_PRESS_MS,
+                                   LONG_PRESS_TIME_MS,
+                                   TOUCH_RELEASE_DEBOUNCE_MS);
+static Point lastTouchPoint = {0, 0};
+static bool touchSequenceActive = true;//Keep reading until the screen is seen released
+
+void touchPoll(const uint32_t nowMs)
+{
+#if TOUCH_USE_IRQ
+  //Don't touch the SPI bus while idle unless the interrupt reported a touch.
+  //The flag is consumed unconditionally so an edge can't be left over from an earlier sequence.
+  if(!touchIrqConsume() && !touchSequenceActive){
+    return;
   }
-  delay(DEBOUNCE_DELAY_MS);
-  if (!readTouch(touch_point_out)){//debounce
-    return ButtonPress_e::NotPressed;
-  }
-  
-  uint16_t down_time = 0;
-  while(readTouch(touch_point_out) && (down_time < LONG_PRESS_TIME_MS)){
-    delay(LONG_PRESS_POLL_TIME_MS);
-    down_time += LONG_PRESS_POLL_TIME_MS;
+#endif
+
+  Point point;
+  const bool touched = readTouch(&point);
+  if(touched){
+    lastTouchPoint = point;
   }
 
-  scaleTouch(touch_point_out);
+  const ButtonPress_e press = touchDetector.update(touched, nowMs);
+  touchSequenceActive = touched || !touchDetector.idle();
+  if(ButtonPress_e::NotPressed != press){
+    Event event = {};
+    event.type = EventType::TouchPress;
+    event.press = press;
+    event.point = lastTouchPoint;
+    scaleTouch(&event.point);
+    event.timestampMs = nowMs;
+    eventPost(event);
+  }
+}
 
-  if(down_time < LONG_PRESS_TIME_MS){
-    return ButtonPress_e::ShortPress;
-  }
-  else{
-    return ButtonPress_e::LongPress;
-  }
+void touchReset()
+{
+  touchDetector.reset();
+  touchSequenceActive = true;
 }

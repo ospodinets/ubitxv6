@@ -1,6 +1,10 @@
 #pragma once
 
-#include "menu.h"
-#include "point.h"
+#include <stdint.h>
 
-ButtonPress_e checkTouch(Point *const touch_point_out);
+//Samples the touch screen and posts a TouchPress event (with calibrated point)
+//when a press completes. Never blocks.
+void touchPoll(const uint32_t nowMs);
+
+//Ignores the touch screen until it is released, and forgets any partial press
+void touchReset();
