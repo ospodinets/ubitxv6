@@ -493,14 +493,26 @@ void setupTouch(){
   const int32_t diff_x_target = CROSS_CORNER_POINTS[1].x - CROSS_CORNER_POINTS[0].x;
 
   //Average the measured differences
-  globalSettings.touchSlopeX = SCALE_SENSITIVITY_MULTIPLIER*(diff_x_top + diff_x_bottom) / (2*diff_x_target);
+  const int16_t slopeX = SCALE_SENSITIVITY_MULTIPLIER*(diff_x_top + diff_x_bottom) / (2*diff_x_target);
 
   const int16_t diff_y_left = cal_points[2].y - cal_points[0].y;
   const int16_t diff_y_right = cal_points[3].y - cal_points[1].y;
   const int32_t diff_y_target = CROSS_CORNER_POINTS[2].y - CROSS_CORNER_POINTS[0].y;
 
   //Average the measured differences
-  globalSettings.touchSlopeY = SCALE_SENSITIVITY_MULTIPLIER*(diff_y_left + diff_y_right) / (2*diff_y_target);
+  const int16_t slopeY = SCALE_SENSITIVITY_MULTIPLIER*(diff_y_left + diff_y_right) / (2*diff_y_target);
+
+  if(slopeX == 0 || slopeY == 0){
+    Serial.println(F("TOUCH: calibration failed; previous calibration retained"));
+    displayClear(DISPLAY_BLACK);
+    strncpy_P(b,(const char*)F("Calibration failed\nPrevious settings retained"),sizeof(b));
+    displayText(b, 20,100, 280, 50, DISPLAY_WHITE, DISPLAY_BLACK, DISPLAY_BLACK);
+    delay(2500);
+    return;
+  }
+
+  globalSettings.touchSlopeX = slopeX;
+  globalSettings.touchSlopeY = slopeY;
 
   globalSettings.touchOffsetX = cal_points[0].x - ((CROSS_CORNER_OFFSET * globalSettings.touchSlopeX)/SCALE_SENSITIVITY_MULTIPLIER);
   globalSettings.touchOffsetY = cal_points[0].y - ((CROSS_CORNER_OFFSET * globalSettings.touchSlopeY)/SCALE_SENSITIVITY_MULTIPLIER);

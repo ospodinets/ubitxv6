@@ -52,7 +52,7 @@ uint8_t  si5351bx_clken = 0xFF;         // Private, all CLK output drivers off
 
 TwoWire myWire(PB7, PB6);  // I2C object, user may want to use Wire.begin() in setup() to set pins
 
-static const uint32_t I2C_CLOCK_HZ = 100000;//Si5351 fast mode; keeps the several writes needed per retune short
+static const uint32_t I2C_CLOCK_HZ = 200000;//Si5351 fast mode; keeps the several writes needed per retune short
 static const uint8_t I2C_ATTEMPTS = 2;
 
 void i2cWriten(uint8_t reg, uint8_t *vals, uint8_t vcnt) {  // write array
