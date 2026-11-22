@@ -29,10 +29,9 @@ void LoadSettingsFromEeprom();
 /*
  * Saves all persistent settings to the EEPROM
  * 
- * It's a little CPU-cycle-wasteful to save EVERYTHING
- * each time, but keeps things simple
+ * Returns false if the flash journal write or verification fails.
  */
-void SaveSettingsToEeprom();
+bool SaveSettingsToEeprom();
 
 /*
  * These are all of the settings

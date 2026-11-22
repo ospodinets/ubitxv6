@@ -30,6 +30,14 @@ should be resolved in this project's tag R1.5.1.
 
 To edit the callsign displayed, open the file `callsign.cpp` and change the string. Then re-compile and upload.
 
+# Settings storage and timing
+
+On the Black Pill STM32F411CE, settings use a flash journal in sectors 6 and 7. The firmware is limited to the first 256 KiB so it cannot overlap these sectors. Existing EEPROM settings are loaded when no journal record exists and migrated on the first changed save. Back up settings before flashing: some upload tools erase all flash, including settings. Older firmware does not understand the journal and can erase it.
+
+Changed settings are appended as a checksummed record; unchanged saves do not write flash. When a sector fills, the other is erased before the next record is committed. A previous valid record remains available if power is lost during recycling. Erasing a sector can still cause an occasional noticeable pause.
+
+The serial monitor (38400 baud) reports the changed byte count, whether a sector was erased, and total and journal times in milliseconds. A write or readback failure is reported as an error. Serial output is excluded. Timings use the STM32 cycle counter because flash operations can stall SysTick; they assume a constant CPU clock and a save shorter than one counter wrap (about 43 seconds at 100 MHz).
+
 # Future Features/Modifications
 
 There are some features that would be good to add, but I just didn't get around to.

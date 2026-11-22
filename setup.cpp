@@ -536,8 +536,9 @@ void ssResetAllFinalize(const long int final_value)
 {
   if(final_value){
     LoadDefaultSettings();
-    SaveSettingsToEeprom();
-    NVIC_SystemReset();//Restart cleanly rather than re-running setup() from inside a menu
+    if(SaveSettingsToEeprom()){
+      NVIC_SystemReset();//Restart cleanly rather than re-running setup() from inside a menu
+    }
   }
 }
 const char SS_RESET_ALL_T [] PROGMEM = "Reset All";
