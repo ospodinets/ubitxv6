@@ -25,9 +25,11 @@ static const uint16_t EEPROM_ADDR_TOUCH_OFFSET_Y  = 44;//int16_t
 static const uint16_t EEPROM_ADDR_CW_DELAYTIME  = 48;//uint16_t
 static const uint16_t EEPROM_ADDR_VFO_A_MODE = 256;//uint8_t
 static const uint16_t EEPROM_ADDR_VFO_B_MODE = 257;//uint8_t
+static const uint16_t EEPROM_ADDR_ACTIVE_VFO = 258;//uint32_t tagged value
 static const uint16_t EEPROM_ADDR_CW_KEY_TYPE = 358;//uint8_t
 static const uint16_t EEPROM_ADDR_QUICKLIST_FREQ = 630;//uint32_t array of size NUM_QUICKLIST_SETTINGS
 static const uint16_t EEPROM_ADDR_QUICKLIST_MODE = 710;//uint8_t array of size NUM_QUICKLIST_SETTINGS
+static const uint32_t EEPROM_ACTIVE_VFO_TAG = 0x56464f00UL;
 
 static uint8_t persistedSettings[SettingsJournal::IMAGE_SIZE];
 static bool settingsImageLoaded = false;
@@ -131,6 +133,14 @@ void LoadSettingsFromEeprom()
   }
   LoadSane(globalSettings.vfoA.mode,EEPROM_ADDR_VFO_A_MODE,VFO_MODE_LSB,VFO_MODE_USB);
   LoadSane(globalSettings.vfoB.mode,EEPROM_ADDR_VFO_B_MODE,VFO_MODE_LSB,VFO_MODE_USB);
+  uint32_t storedActiveVfo;
+  ReadSetting(EEPROM_ADDR_ACTIVE_VFO, storedActiveVfo);
+  if(storedActiveVfo == (EEPROM_ACTIVE_VFO_TAG | VFO_A)){
+    globalSettings.activeVfo = VFO_A;
+  }
+  else if(storedActiveVfo == (EEPROM_ACTIVE_VFO_TAG | VFO_B)){
+    globalSettings.activeVfo = VFO_B;
+  }
   LoadSane(globalSettings.keyerMode,EEPROM_ADDR_CW_KEY_TYPE,KEYER_STRAIGHT,KEYER_IAMBIC_B);
 
   for(uint8_t i = 0; i < NUM_QUICKLIST_SETTINGS; ++i){
@@ -189,6 +199,7 @@ static void PutAllSettings(EepromSettingsBatch& batch)
   batch.put(EEPROM_ADDR_CW_DELAYTIME,globalSettings.cwActiveTimeoutMs/10);//scale by 10 for legacy reasons
   batch.put(EEPROM_ADDR_VFO_A_MODE,globalSettings.vfoA.mode);
   batch.put(EEPROM_ADDR_VFO_B_MODE,globalSettings.vfoB.mode);
+  batch.put(EEPROM_ADDR_ACTIVE_VFO,EEPROM_ACTIVE_VFO_TAG | globalSettings.activeVfo);
   batch.put(EEPROM_ADDR_CW_KEY_TYPE,globalSettings.keyerMode);
 
   for(uint8_t i = 0; i < NUM_QUICKLIST_SETTINGS; ++i){

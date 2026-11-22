@@ -462,16 +462,7 @@ ButtonStatus_e bsVfoSec(){
 
 void osVfoSec()
 {
-  if (globalSettings.ritOn)
-  {
-    osRit(); // Turn off RIT
-  }
-
-  globalSettings.activeVfo = (globalSettings.activeVfo == VFO_A) ? VFO_B : VFO_A;
-  SaveSettingsToEeprom();
-
-  ltoa(GetActiveVfoFreq(), b, 10);
-
+  switchVFO(globalSettings.activeVfo == VFO_A ? VFO_B : VFO_A);
   bVfoSec.draw();
   drawVfo();
   drawBand();

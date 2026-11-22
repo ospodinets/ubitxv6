@@ -265,7 +265,7 @@ void setup()
   initTouch();
   initPorts();
   initOscillators();
-  setFrequency(globalSettings.vfoA.frequency);
+  setFrequency(GetActiveVfoFreq());
 
   //Run initial calibration routine if button is pressed during power up
   if(IsButtonPressed()){
