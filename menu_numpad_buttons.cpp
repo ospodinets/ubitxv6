@@ -3,6 +3,7 @@
 #include <avr/pgmspace.h>
 #include <WString.h>//F()
 
+#include "bands.h"
 #include "color_theme.h"
 #include "nano_gui.h"
 #include "scratch_space.h"
@@ -22,6 +23,8 @@ static const unsigned int LAYOUT_BUTTON_WIDTH = 60;
 static const unsigned int LAYOUT_BUTTON_HEIGHT = 36;
 static const unsigned int LAYOUT_BUTTON_PITCH_X = 64;
 static const unsigned int LAYOUT_BUTTON_PITCH_Y = 40;
+
+static const uint32_t NUMPAD_MAX_FREQ_BEFORE_DIGIT = 10000000UL;
 
 uint32_t numpadMenuFrequency;
 ButtonPress_e numpadSelectionMode;
@@ -117,6 +120,9 @@ void updateCurrentEnteredFrequency(void)
 
 void osNumpad(uint8_t new_digit)
 {
+  if(numpadMenuFrequency >= NUMPAD_MAX_FREQ_BEFORE_DIGIT){
+    return;//Another digit would give more than 8 digits, which no band needs, and could overflow
+  }
   numpadMenuFrequency *= 10;
   numpadMenuFrequency += new_digit;
   updateCurrentEnteredFrequency();
@@ -146,9 +152,10 @@ NUMBER_ONSELECT_GENERATE(9);
 
 void osOk(void)
 {
-  SetActiveVfoFreq(numpadMenuFrequency);
+  const uint32_t frequency = clampToNearestBand(numpadMenuFrequency);
+  SetActiveVfoFreq(frequency);
   SaveSettingsToEeprom();
-  setFrequency(numpadMenuFrequency);
+  setFrequency(frequency);
   numpadSelectionMode = ButtonPress_e::NotPressed;
 }
 

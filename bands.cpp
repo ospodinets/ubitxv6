@@ -64,6 +64,29 @@ int8_t findBandIndexFromFreq(uint32_t frequency)
   return -1;
 }
 
+uint32_t clampToNearestBand(const uint32_t frequency)
+{
+  if(-1 != findBandIndexFromFreq(frequency)){
+    return frequency;
+  }
+
+  //Not in any band. The bands are ordered, so the nearest edge is next to the gap the frequency is in
+  uint32_t previous_max = 0;
+  for(uint8_t i = 0; i < NUM_BANDS; ++i){
+    Band_t band;
+    memcpy_P(&band,&bands[i],sizeof(band));
+    if(frequency < band.min){
+      if(0 == i || (band.min - frequency) < (frequency - previous_max)){
+        return band.min;
+      }
+      return previous_max;
+    }
+    previous_max = band.max;
+  }
+
+  return previous_max;//Above the last band
+}
+
 void getBandString(const unsigned long frequency,
                    char* band_string_out,
                    uint16_t max_string_length)

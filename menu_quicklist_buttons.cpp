@@ -2,6 +2,7 @@
 
 #include <WString.h>//F()
 
+#include "bands.h"
 #include "color_theme.h"
 #include "nano_gui.h"
 #include "scratch_space.h"
@@ -66,7 +67,7 @@ const uint8_t QUICKLIST_MENU_NUM_BUTTONS = sizeof(quickListMenuButtons)/sizeof(q
 
 void osQuickListRecall(uint8_t index)
 {
-  SetActiveVfoFreq(globalSettings.quickList[index].frequency);
+  SetActiveVfoFreq(clampToNearestBand(globalSettings.quickList[index].frequency));
   SetActiveVfoMode(globalSettings.quickList[index].mode);
 }
 

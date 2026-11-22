@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 
+#include "bands.h"
 #include "button.h"
 #include "color_theme.h"
 #include "menu_utils.h"
@@ -101,8 +102,9 @@ void mainMenuTune(int16_t knob)
   }
 
   const uint32_t current_freq = GetActiveVfoFreq();
-  const uint32_t new_freq = current_freq + (MAIN_TUNING_STEP_HZ * knob);
-  
+  const int64_t raw_freq = static_cast<int64_t>(current_freq) + static_cast<int64_t>(MAIN_TUNING_STEP_HZ) * knob;
+  const uint32_t new_freq = clampToNearestBand(raw_freq < 0 ? 0 : static_cast<uint32_t>(raw_freq));
+
   SetActiveVfoFreq(new_freq);
   autoSelectSidebandChanged(current_freq);
 }
