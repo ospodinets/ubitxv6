@@ -122,6 +122,17 @@ int enc_read(void)
   return static_cast<int>(result);
 }
 
+void encoderReset(void)
+{
+  previousEncoderCount = static_cast<uint16_t>(TIM3->CNT);
+  enc_count = 0;
+  enc_count_periodic = 0;
+  momentum[0] = 0;
+  momentum[1] = 0;
+  momentum[2] = 0;
+  lastMomentumSampleMs = millis();
+}
+
 void encoderPoll(const uint32_t nowMs)
 {
   const int knob = enc_read();

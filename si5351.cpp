@@ -52,23 +52,28 @@ uint8_t  si5351bx_clken = 0xFF;         // Private, all CLK output drivers off
 
 TwoWire myWire(PB7, PB6);  // I2C object, user may want to use Wire.begin() in setup() to set pins
 
-void i2cWrite(uint8_t reg, uint8_t val) {   // write reg via i2c
-  myWire.beginTransmission(SI5351BX_ADDR);
-  myWire.write(reg);
-  myWire.write(val);
-  myWire.endTransmission();
-}
+static const uint32_t I2C_CLOCK_HZ = 100000;//Si5351 fast mode; keeps the several writes needed per retune short
+static const uint8_t I2C_ATTEMPTS = 2;
 
 void i2cWriten(uint8_t reg, uint8_t *vals, uint8_t vcnt) {  // write array
-  myWire.beginTransmission(SI5351BX_ADDR);
-  myWire.write(reg);
-  while (vcnt--) myWire.write(*vals++);
-  myWire.endTransmission();
+  for (uint8_t attempt = 0; attempt < I2C_ATTEMPTS; ++attempt) {
+    myWire.beginTransmission(SI5351BX_ADDR);
+    myWire.write(reg);
+    for (uint8_t i = 0; i < vcnt; ++i) myWire.write(vals[i]);
+    if (0 == myWire.endTransmission()) {
+      return;
+    }
+  }
+}
+
+void i2cWrite(uint8_t reg, uint8_t val) {   // write reg via i2c
+  i2cWriten(reg, &val, 1);
 }
 
 
 void si5351bx_init() {                  // Call once at power-up, start PLLA
   myWire.begin();
+  myWire.setClock(I2C_CLOCK_HZ);
   i2cWrite(149, 0);                     // SpreadSpectrum off
   i2cWrite(3, si5351bx_clken);          // Disable all CLK output drivers
   i2cWrite(183, SI5351BX_XTALPF << 6);  // Set 25mhz crystal load capacitance

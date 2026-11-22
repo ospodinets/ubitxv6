@@ -272,3 +272,23 @@ void cwKeyerUpdate(const uint32_t nowMs){
     iambicKeyerUpdate(nowMs);
   }
 }
+
+/*
+ * True if the main loop can spend durationMs on something else (e.g. a display redraw)
+ * without disturbing the timing of the element being sent.
+ */
+bool cwKeyerCanBlockFor(const uint32_t nowMs, const uint32_t durationMs){
+  if(straightKeyDown){
+    return true;//Keyed by hand, so there is no timing to protect
+  }
+
+  switch(keyerState){
+    case IDLE:
+      return true;
+    case KEYED:
+    case INTER_ELEMENT:
+      return static_cast<int32_t>(keyerDeadlineMs - nowMs) >= static_cast<int32_t>(durationMs);
+    default://A transition is due on the very next pass
+      return false;
+  }
+}

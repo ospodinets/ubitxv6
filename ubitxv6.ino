@@ -68,20 +68,46 @@ static bool userInputSuspended = false;
 /**
  * The PTT is handled only if we are not in cw mode, where the keyer reads the
  * pin directly so that it can be used as a straight key.
- * The TX manager only lets the PTT end a TX that the PTT started.
+ * A press starts TX at once, but only if the pin still reads pressed, so a glitch
+ * can't key the radio. The release is handled by enforcePttRelease(), which looks
+ * at the pin level rather than at edges.
  */
 void handlePttEvent(const Event& event){
   if(TuningMode_e::TUNE_CW == globalSettings.tuningMode){
     return;
   }
 
-  if(event.pressed){
+  if(event.pressed && IsPttPressed()){
     if(!txIsActive()){
       userInputSuspended = true;
     }
     txStart(TxSource::Ptt);
   }
-  else{
+}
+
+/**
+ * Ends a PTT transmission once the pin has stayed released for a short time.
+ * Chatter on the line as it is released (a slow edge with noise on it) would otherwise
+ * switch TX on and off repeatedly. It also means that ending TX never depends on a
+ * release edge having reached us, so a lost event can't leave the radio transmitting.
+ */
+static const uint32_t PTT_RELEASE_DEBOUNCE_MS = 20;
+
+void enforcePttRelease(const uint32_t nowMs){
+  static bool releaseTiming = false;
+  static uint32_t releasedSinceMs = 0;
+
+  if(TxSource::Ptt != txSource() || IsPttPressed()){
+    releaseTiming = false;
+    return;
+  }
+
+  if(!releaseTiming){
+    releaseTiming = true;
+    releasedSinceMs = nowMs;
+  }
+  if(nowMs - releasedSinceMs >= PTT_RELEASE_DEBOUNCE_MS){
+    releaseTiming = false;
     txStop(TxSource::Ptt);
   }
 }
@@ -142,12 +168,28 @@ void initPorts(){
 }
 
 /**
- * Ignores the touch screen and tuner button until they have been released,
+ * Ignores the touch screen, tuner button and encoder until they have been released,
  * and forgets any partially detected press. Queued events are left alone.
  */
 void resetUserInput(){
   tunerButtonReset();
   touchReset();
+  encoderReset();
+}
+
+/**
+ * The menu is also refreshed while transmitting (the S-meter doubles as an SWR meter),
+ * but only with Ticks, never with user input. While CW keying, a refresh is only allowed
+ * when it can't push back the end of the element being sent.
+ */
+static const uint32_t TX_REFRESH_BUDGET_MS = 10;
+
+static bool menuMayRefreshNow(){
+  if(!txIsActive()){
+    return true;
+  }
+  return TxSource::CwKey != txSource()
+      || cwKeyerCanBlockFor(millis(), TX_REFRESH_BUDGET_MS);
 }
 
 /**
@@ -193,7 +235,7 @@ void runUserInput(){
     menu_run = true;
   }
 
-  if(!menu_run && !txIsActive()){
+  if(!menu_run && menuMayRefreshNow()){
     MenuInput tick = {};
     tick.type = MenuInputType::Tick;
     runActiveMenu(tick);
@@ -261,6 +303,7 @@ void loop(){
   }
 
   resyncPttIfEventsDropped();
+  enforcePttRelease(millis());
   runUserInput();
 
   if(consumeTxIndicatorStale()){

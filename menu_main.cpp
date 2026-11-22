@@ -9,6 +9,7 @@
 #include "nano_gui.h"
 #include "settings.h"
 #include "tuner.h"//THRESHOLD_USB_LSB
+#include "tx_manager.h"
 #include "utils.h"
 #include "smeter.h"
 
@@ -58,8 +59,11 @@ void drawMainMenuIncrement()
     last_freq = GetActiveVfoFreq();
     last_vfo = globalSettings.activeVfo;
 
-    // We set this here so that we're always hearing what's displayed
-    setFrequency(last_freq);
+    // We set this here so that we're always hearing what's displayed.
+    // Not while transmitting, when the oscillators are configured for TX.
+    if(!txIsActive()){
+      setFrequency(last_freq);
+    }
   }
 
   if (last_mode != GetActiveVfoMode())

@@ -452,7 +452,6 @@ void ssKeyerChange(const long int new_value, char* buff_out, const size_t buff_o
   else{
     strncpy_P(buff_out,(const char*)F("Iambic B"),buff_out_size);
   }
-  enc_read();//Consume any rotations during morse playback
 }
 void ssKeyerFinalize(const long int final_value)
 {
@@ -493,7 +492,6 @@ void ssCwSpeedChange(const long int new_value, char* buff_out, const size_t /*bu
 {
   ltoa(new_value, buff_out, 10);
   startCwPractice(globalSettings.cwSideToneFreq, 1200L / new_value);
-  enc_read();//Consume any rotations during morse playback
 }
 void ssCwSpeedFinalize(const long int final_value)
 {
@@ -533,14 +531,13 @@ void ssResetAllChange(const long int new_value, char* buff_out, const size_t buf
   else{
     strncpy_P(buff_out,strNo,buff_out_size);
   }
-  enc_read();//Consume any rotations during morse playback
 }
 void ssResetAllFinalize(const long int final_value)
 {
   if(final_value){
     LoadDefaultSettings();
     SaveSettingsToEeprom();
-    setup();
+    NVIC_SystemReset();//Restart cleanly rather than re-running setup() from inside a menu
   }
 }
 const char SS_RESET_ALL_T [] PROGMEM = "Reset All";
